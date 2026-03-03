@@ -3,14 +3,18 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { SITE_URL } from "@/lib/config";
 import DeleteBoxClient from "@/components/DeleteBoxClient";
 
+type BereavedItem = { name: string; relation?: string; phone?: string };
+
 type Notice = {
   id: string;
   deceased_name: string;
+  deceased_age: number | null;
   funeral_home: string;
   room: string | null;
   summary: string | null;
   map_url: string | null;
   message: string | null;
+  bereaved_list: BereavedItem[] | null;
   expires_at: string;
   created_at: string;
 };
@@ -18,7 +22,7 @@ type Notice = {
 async function getNotice(id: string): Promise<Notice | null> {
   const { data } = await supabaseServer
     .from("notices")
-    .select("id,deceased_name,funeral_home,room,summary,map_url,message,expires_at,created_at")
+    .select("id,deceased_name,deceased_age,funeral_home,room,summary,map_url,message,bereaved_list,expires_at,created_at")
     .eq("id", id)
     .single();
 
@@ -64,7 +68,7 @@ export default async function NoticePage(
 
   if (!data) {
     return (
-      <div style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
+      <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
         <h1 style={{ fontSize: 26 }}>부고장을 찾을 수 없습니다</h1>
         <p style={{ color: "#555", lineHeight: 1.6 }}>
           링크가 잘못되었거나, 이미 만료/삭제된 부고장입니다.
@@ -78,8 +82,14 @@ export default async function NoticePage(
   const shareUrl = `${SITE_URL}/m/${data.id}`;
 
   return (
-    <div style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
+    <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
       <h1 style={{ fontSize: 34, marginBottom: 10 }}>故 {data.deceased_name}님 부고</h1>
+
+      {data.deceased_age !== null ? (
+        <div style={{ marginTop: 6, color: "#374151" }}>
+          <b>고인 나이</b> : {data.deceased_age}세
+        </div>
+      ) : null}
 
       <div style={{ padding: 14, border: "1px solid #ddd", borderRadius: 12, marginTop: 16, background: "#fff" }}>
         <p style={{ margin: 0, fontSize: 16 }}>
@@ -100,9 +110,32 @@ export default async function NoticePage(
         ) : null}
       </div>
 
+      {data.bereaved_list && data.bereaved_list.length ? (
+        <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
+          <b>상주</b>
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {data.bereaved_list.map((b, i) => (
+              <div key={i} style={{ padding: 10, border: "1px solid #f0f0f0", borderRadius: 12 }}>
+                <div style={{ fontWeight: 700 }}>{b.name}</div>
+                {(b.relation || b.phone) ? (
+                  <div style={{ marginTop: 4, color: "#555", fontSize: 14, lineHeight: 1.6 }}>
+                    {b.relation ? <span>{b.relation}</span> : null}
+                    {b.relation && b.phone ? <span> · </span> : null}
+                    {b.phone ? <span>{b.phone}</span> : null}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {data.message ? (
-        <div style={{ marginTop: 18, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
-          <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{data.message}</p>
+        <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
+          <b>추가 안내</b>
+          <div style={{ marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.7, color: "#111827" }}>
+            {data.message}
+          </div>
         </div>
       ) : null}
 
