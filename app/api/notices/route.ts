@@ -9,7 +9,31 @@ function getClientIp(h: Headers) {
   return h.get("x-real-ip") || "unknown";
 }
 
-type BereavedItem = { name: string; relation?: string; phone?: string };
+type AccountItem = { bank: string; number: string; holder?: string };
+type BereavedItem = { name: string; relation?: string; phone?: string; accounts?: AccountItem[] };
+
+function sanitizeAccounts(input: any): AccountItem[] | undefined {
+  if (!Array.isArray(input)) return undefined;
+  const out: AccountItem[] = [];
+
+  for (const raw of input) {
+    const bank = String(raw?.bank ?? "").trim();
+    const number = String(raw?.number ?? "").trim();
+    const holder = String(raw?.holder ?? "").trim();
+
+    if (!bank || !number) continue;
+
+    out.push({
+      bank,
+      number,
+      holder: holder || undefined,
+    });
+
+    if (out.length >= 5) break; // 상주 1명당 계좌 최대 5개 제한
+  }
+
+  return out.length ? out : undefined;
+}
 
 function sanitizeBereavedList(input: any): BereavedItem[] | null {
   if (!Array.isArray(input)) return null;
@@ -19,16 +43,18 @@ function sanitizeBereavedList(input: any): BereavedItem[] | null {
     const name = String(raw?.name ?? "").trim();
     const relation = String(raw?.relation ?? "").trim();
     const phone = String(raw?.phone ?? "").trim();
-
     if (!name) continue;
+
+    const accounts = sanitizeAccounts(raw?.accounts);
 
     out.push({
       name,
       relation: relation || undefined,
       phone: phone || undefined,
+      accounts,
     });
 
-    if (out.length >= 10) break; // 상주 최대 10명 제한(안전장치)
+    if (out.length >= 10) break; // 상주 최대 10명 제한
   }
 
   return out.length ? out : null;
@@ -92,9 +118,7 @@ export async function POST(req: Request) {
     summary,
     map_url: mapUrl || null,
     message: message || null,
-
-    bereaved_list: bereavedList, // jsonb 저장
-
+    bereaved_list: bereavedList, // accounts 포함 저장 가능
     delete_key: deleteKey,
     expires_at: expiresAt,
     created_ip: ip,

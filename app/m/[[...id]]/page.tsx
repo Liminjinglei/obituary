@@ -3,7 +3,8 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { SITE_URL } from "@/lib/config";
 import DeleteBoxClient from "@/components/DeleteBoxClient";
 
-type BereavedItem = { name: string; relation?: string; phone?: string };
+type AccountItem = { bank: string; number: string; holder?: string };
+type BereavedItem = { name: string; relation?: string; phone?: string; accounts?: AccountItem[] };
 
 type Notice = {
   id: string;
@@ -113,15 +114,30 @@ export default async function NoticePage(
       {data.bereaved_list && data.bereaved_list.length ? (
         <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
           <b>상주</b>
-          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
             {data.bereaved_list.map((b, i) => (
-              <div key={i} style={{ padding: 10, border: "1px solid #f0f0f0", borderRadius: 12 }}>
-                <div style={{ fontWeight: 700 }}>{b.name}</div>
+              <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
+                <div style={{ fontWeight: 800 }}>{b.name}</div>
                 {(b.relation || b.phone) ? (
                   <div style={{ marginTop: 4, color: "#555", fontSize: 14, lineHeight: 1.6 }}>
                     {b.relation ? <span>{b.relation}</span> : null}
                     {b.relation && b.phone ? <span> · </span> : null}
                     {b.phone ? <span>{b.phone}</span> : null}
+                  </div>
+                ) : null}
+
+                {b.accounts && b.accounts.length ? (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
+                    <div style={{ fontWeight: 800, marginBottom: 8 }}>계좌</div>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {b.accounts.map((a, j) => (
+                        <div key={j} style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
+                          <div style={{ fontWeight: 700 }}>{a.bank}</div>
+                          <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
+                          {a.holder ? <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>예금주: {a.holder}</div> : null}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </div>
