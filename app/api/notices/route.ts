@@ -10,7 +10,7 @@ function getClientIp(h: Headers) {
 }
 
 type AccountItem = { bank: string; number: string; holder?: string };
-type BereavedItem = { name: string; relation?: string; phone?: string; accounts?: AccountItem[] };
+type BereavedItem = { seq?: number; role: string; name: string; phone?: string; accounts?: AccountItem[] };
 
 function sanitizeAccounts(input: any): AccountItem[] | undefined {
   if (!Array.isArray(input)) return undefined;
@@ -20,18 +20,11 @@ function sanitizeAccounts(input: any): AccountItem[] | undefined {
     const bank = String(raw?.bank ?? "").trim();
     const number = String(raw?.number ?? "").trim();
     const holder = String(raw?.holder ?? "").trim();
-
     if (!bank || !number) continue;
 
-    out.push({
-      bank,
-      number,
-      holder: holder || undefined,
-    });
-
-    if (out.length >= 5) break; // 상주 1명당 계좌 최대 5개 제한
+    out.push({ bank, number, holder: holder || undefined });
+    if (out.length >= 5) break;
   }
-
   return out.length ? out : undefined;
 }
 
@@ -40,21 +33,25 @@ function sanitizeBereavedList(input: any): BereavedItem[] | null {
   const out: BereavedItem[] = [];
 
   for (const raw of input) {
+    const role = String(raw?.role ?? "").trim();
     const name = String(raw?.name ?? "").trim();
-    const relation = String(raw?.relation ?? "").trim();
     const phone = String(raw?.phone ?? "").trim();
-    if (!name) continue;
+    const seqRaw = raw?.seq;
 
+    if (!role || !name) continue;
+
+    const seq = Number.isFinite(Number(seqRaw)) ? Number(seqRaw) : undefined;
     const accounts = sanitizeAccounts(raw?.accounts);
 
     out.push({
+      seq,
+      role,
       name,
-      relation: relation || undefined,
       phone: phone || undefined,
       accounts,
     });
 
-    if (out.length >= 10) break; // 상주 최대 10명 제한
+    if (out.length >= 20) break; // 상주 최대 20명
   }
 
   return out.length ? out : null;
@@ -88,7 +85,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "고인 나이는 0~120 범위의 숫자만 가능합니다." }, { status: 400 });
   }
 
-  // 스팸 방지: 같은 IP에서 최근 1시간 생성 제한
+  // 1시간당 생성 제한
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count } = await supabaseServer
     .from("notices")
@@ -118,7 +115,7 @@ export async function POST(req: Request) {
     summary,
     map_url: mapUrl || null,
     message: message || null,
-    bereaved_list: bereavedList, // accounts 포함 저장 가능
+    bereaved_list: bereavedList,
     delete_key: deleteKey,
     expires_at: expiresAt,
     created_ip: ip,

@@ -4,7 +4,56 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type AccountRow = { bank: string; number: string; holder: string };
-type BereavedRow = { name: string; relation: string; phone: string; accounts: AccountRow[] };
+type BereavedRow = {
+  role: string; // 버튼에서 고르는 신분
+  name: string;
+  phone: string;
+  accounts: AccountRow[];
+};
+
+const ROLE_OPTIONS: string[] = [
+  "배우자", "아들", "딸", "자부",
+  "사위", "손자", "손녀", "외손자",
+  "외손녀", "손부", "손서", "외손부",
+  "외손서", "형(兄)", "오빠", "누나",
+  "언니", "남동생", "여동생", "부(父)",
+  "모(母)", "고모", "이모", "백부",
+  "백모", "숙부", "숙모", "형수",
+  "제수", "매형", "매제", "기타",
+];
+
+function RolePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+      {ROLE_OPTIONS.map((r) => {
+        const active = value === r;
+        return (
+          <button
+            key={r}
+            type="button"
+            onClick={() => onChange(r)}
+            style={{
+              padding: "14px 10px",
+              borderRadius: 14,
+              border: "1px solid #e5e7eb",
+              background: active ? "#111827" : "#fff",
+              color: active ? "#fff" : "#111827",
+              fontWeight: 800,
+            }}
+          >
+            {r}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function CreatePage() {
   const router = useRouter();
@@ -17,17 +66,19 @@ export default function CreatePage() {
   const [message, setMessage] = useState("");
 
   const [bereavedRows, setBereavedRows] = useState<BereavedRow[]>([
-    { name: "", relation: "", phone: "", accounts: [] },
+    { role: "아들", name: "", phone: "", accounts: [] },
   ]);
 
   const [loading, setLoading] = useState(false);
 
+  // 전송용 변환: 이름 없는 줄은 제외, 계좌는 bank+number 있는 것만
   const bereavedList = useMemo(() => {
     return bereavedRows
-      .map((r) => ({
+      .map((r, idx) => ({
+        seq: idx, // 같은 신분끼리 입력 순 유지용
+        role: r.role,
         name: r.name.trim(),
-        relation: r.relation.trim(),
-        phone: r.phone.trim(),
+        phone: r.phone.trim() || undefined,
         accounts: r.accounts
           .map((a) => ({
             bank: a.bank.trim(),
@@ -37,25 +88,19 @@ export default function CreatePage() {
           .filter((a) => a.bank && a.number)
           .map((a) => ({ bank: a.bank, number: a.number, holder: a.holder || undefined })),
       }))
-      .filter((r) => r.name.length > 0)
-      .map((r) => ({
-        name: r.name,
-        relation: r.relation || undefined,
-        phone: r.phone || undefined,
-        accounts: r.accounts.length ? r.accounts : undefined,
-      }));
+      .filter((r) => r.name.length > 0);
   }, [bereavedRows]);
 
   const addBereaved = () => {
-    setBereavedRows((prev) => [...prev, { name: "", relation: "", phone: "", accounts: [] }]);
+    setBereavedRows((prev) => [...prev, { role: "아들", name: "", phone: "", accounts: [] }]);
   };
 
   const removeBereaved = (idx: number) => {
     setBereavedRows((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const updateBereaved = (idx: number, key: "name" | "relation" | "phone", value: string) => {
-    setBereavedRows((prev) => prev.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
+  const updateBereaved = (idx: number, patch: Partial<BereavedRow>) => {
+    setBereavedRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   };
 
   const addAccount = (bIdx: number) => {
@@ -102,7 +147,7 @@ export default function CreatePage() {
           room: room.trim(),
           mapUrl: mapUrl.trim(),
           message: message.trim(),
-          bereavedList, // 상주 + 계좌 목록
+          bereavedList,
         }),
       });
 
@@ -131,7 +176,7 @@ export default function CreatePage() {
 
       <div style={{ display: "grid", gap: 14 }}>
         <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 14 }}>
-          <div style={{ fontWeight: 800, marginBottom: 10 }}>기본 정보</div>
+          <div style={{ fontWeight: 900, marginBottom: 10 }}>기본 정보</div>
 
           <div style={{ display: "grid", gap: 12 }}>
             <div>
@@ -168,38 +213,37 @@ export default function CreatePage() {
 
         <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontWeight: 800 }}>상주 정보(상주별 계좌 추가 가능)</div>
+            <div style={{ fontWeight: 900 }}>상주 정보</div>
             <button type="button" onClick={addBereaved}
-              style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#111827", color: "#fff" }}>
+              style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#111827", color: "#fff", fontWeight: 800 }}>
               + 상주 추가
             </button>
           </div>
 
-          <div style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "grid", gap: 12 }}>
             {bereavedRows.map((r, idx) => (
               <div key={idx} style={{ border: "1px solid #eee", borderRadius: 14, padding: 12, background: "#fafafa" }}>
-                <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ fontWeight: 900, marginBottom: 10 }}>신분 선택</div>
+                <RolePicker value={r.role} onChange={(v) => updateBereaved(idx, { role: v })} />
+
+                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                   <div>
                     <label>이름</label>
-                    <input value={r.name} onChange={(e) => updateBereaved(idx, "name", e.target.value)} style={{ width: "100%", padding: 10, marginTop: 6 }} />
-                  </div>
-
-                  <div>
-                    <label>관계(선택)</label>
-                    <input value={r.relation} onChange={(e) => updateBereaved(idx, "relation", e.target.value)} style={{ width: "100%", padding: 10, marginTop: 6 }} placeholder="예) 아들 / 딸 / 배우자" />
+                    <input value={r.name} onChange={(e) => updateBereaved(idx, { name: e.target.value })}
+                      style={{ width: "100%", padding: 10, marginTop: 6 }} />
                   </div>
 
                   <div>
                     <label>연락처(선택)</label>
-                    <input value={r.phone} onChange={(e) => updateBereaved(idx, "phone", e.target.value)} style={{ width: "100%", padding: 10, marginTop: 6 }} placeholder="예) 010-1234-5678" />
+                    <input value={r.phone} onChange={(e) => updateBereaved(idx, { phone: e.target.value })}
+                      style={{ width: "100%", padding: 10, marginTop: 6 }} placeholder="예) 010-1234-5678" />
                   </div>
 
-                  {/* 계좌 탭(섹션) */}
                   <div style={{ marginTop: 6, paddingTop: 10, borderTop: "1px dashed #ddd" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ fontWeight: 800 }}>계좌 정보(선택)</div>
+                      <div style={{ fontWeight: 900 }}>계좌 정보(선택)</div>
                       <button type="button" onClick={() => addAccount(idx)}
-                        style={{ padding: "8px 10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#fff" }}>
+                        style={{ padding: "8px 10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 800 }}>
                         + 계좌 추가
                       </button>
                     </div>
@@ -229,9 +273,10 @@ export default function CreatePage() {
                                   style={{ width: "100%", padding: 10, marginTop: 6 }} placeholder="예) 홍길동" />
                               </div>
                             </div>
+
                             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
                               <button type="button" onClick={() => removeAccount(idx, aIdx)}
-                                style={{ padding: "8px 10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#fff" }}>
+                                style={{ padding: "8px 10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 800 }}>
                                 계좌 삭제
                               </button>
                             </div>
@@ -241,8 +286,7 @@ export default function CreatePage() {
                     )}
 
                     <p style={{ marginTop: 8, color: "#777", fontSize: 12, lineHeight: 1.5 }}>
-                      • 은행+계좌번호가 비어있는 계좌는 저장되지 않습니다.<br />
-                      • 상주 1명당 최대 5개까지 저장됩니다.
+                      • 은행+계좌번호가 비어있는 계좌는 저장되지 않습니다.
                     </p>
                   </div>
                 </div>
@@ -258,6 +302,7 @@ export default function CreatePage() {
                       border: "1px solid #e5e7eb",
                       background: bereavedRows.length <= 1 ? "#eee" : "#fff",
                       cursor: bereavedRows.length <= 1 ? "not-allowed" : "pointer",
+                      fontWeight: 800,
                     }}
                   >
                     상주 삭제
@@ -268,8 +313,8 @@ export default function CreatePage() {
           </div>
 
           <p style={{ marginTop: 10, color: "#777", fontSize: 13, lineHeight: 1.5 }}>
-            • 이름이 비어있는 상주 줄은 저장되지 않습니다.<br />
-            • 상주는 최대 10명까지 저장됩니다.
+            • 이름이 비어있는 상주는 저장되지 않습니다.<br />
+            • 표시할 때는 입력 순서와 무관하게 신분(항렬) 기준으로 자동 정렬됩니다.
           </p>
         </div>
 
@@ -285,6 +330,7 @@ export default function CreatePage() {
             background: "#111827",
             color: "#fff",
             cursor: loading ? "not-allowed" : "pointer",
+            fontWeight: 900,
           }}
         >
           {loading ? "생성 중..." : "저장하고 공유 링크 만들기"}

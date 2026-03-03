@@ -4,7 +4,7 @@ import { SITE_URL } from "@/lib/config";
 import DeleteBoxClient from "@/components/DeleteBoxClient";
 
 type AccountItem = { bank: string; number: string; holder?: string };
-type BereavedItem = { name: string; relation?: string; phone?: string; accounts?: AccountItem[] };
+type BereavedItem = { seq?: number; role: string; name: string; phone?: string; accounts?: AccountItem[] };
 
 type Notice = {
   id: string;
@@ -19,6 +19,43 @@ type Notice = {
   expires_at: string;
   created_at: string;
 };
+
+function roleRank(role: string): number {
+  // “항렬(세대) 높은 순” + 일반적인 표시 순서
+  const r = role.trim();
+  const map: Record<string, number> = {
+    "부(父)": 0, "모(母)": 1,
+
+    "배우자": 10,
+
+    "아들": 20, "딸": 21,
+    "자부": 22, "사위": 23,
+
+    "손자": 30, "손녀": 31, "외손자": 32, "외손녀": 33,
+    "손부": 34, "손서": 35, "외손부": 36, "외손서": 37,
+
+    "형(兄)": 40, "오빠": 41, "누나": 42, "언니": 43, "남동생": 44, "여동생": 45,
+
+    "백부": 50, "백모": 51, "숙부": 52, "숙모": 53, "고모": 54, "이모": 55,
+    "형수": 56, "제수": 57, "매형": 58, "매제": 59,
+
+    "기타": 99,
+  };
+  return map[r] ?? 98;
+}
+
+function sortBereaved(list: BereavedItem[]): BereavedItem[] {
+  // rank → seq 순 (같은 신분끼리는 입력 순 유지)
+  return [...list].sort((a, b) => {
+    const ra = roleRank(a.role);
+    const rb = roleRank(b.role);
+    if (ra !== rb) return ra - rb;
+
+    const sa = Number.isFinite(Number(a.seq)) ? Number(a.seq) : 9999;
+    const sb = Number.isFinite(Number(b.seq)) ? Number(b.seq) : 9999;
+    return sa - sb;
+  });
+}
 
 async function getNotice(id: string): Promise<Notice | null> {
   const { data } = await supabaseServer
@@ -81,6 +118,7 @@ export default async function NoticePage(
   const created = new Date(data.created_at);
   const expires = new Date(data.expires_at);
   const shareUrl = `${SITE_URL}/m/${data.id}`;
+  const bereavedSorted = data.bereaved_list ? sortBereaved(data.bereaved_list) : [];
 
   return (
     <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
@@ -111,28 +149,25 @@ export default async function NoticePage(
         ) : null}
       </div>
 
-      {data.bereaved_list && data.bereaved_list.length ? (
+      {bereavedSorted.length ? (
         <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
           <b>상주</b>
           <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-            {data.bereaved_list.map((b, i) => (
+            {bereavedSorted.map((b, i) => (
               <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
-                <div style={{ fontWeight: 800 }}>{b.name}</div>
-                {(b.relation || b.phone) ? (
-                  <div style={{ marginTop: 4, color: "#555", fontSize: 14, lineHeight: 1.6 }}>
-                    {b.relation ? <span>{b.relation}</span> : null}
-                    {b.relation && b.phone ? <span> · </span> : null}
-                    {b.phone ? <span>{b.phone}</span> : null}
-                  </div>
-                ) : null}
+                <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                  <div style={{ fontWeight: 900 }}>{b.name}</div>
+                  <div style={{ color: "#6b7280", fontSize: 13 }}>{b.role}</div>
+                  {b.phone ? <div style={{ color: "#374151", fontSize: 13 }}>· {b.phone}</div> : null}
+                </div>
 
                 {b.accounts && b.accounts.length ? (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
-                    <div style={{ fontWeight: 800, marginBottom: 8 }}>계좌</div>
+                    <div style={{ fontWeight: 900, marginBottom: 8 }}>계좌</div>
                     <div style={{ display: "grid", gap: 8 }}>
                       {b.accounts.map((a, j) => (
                         <div key={j} style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-                          <div style={{ fontWeight: 700 }}>{a.bank}</div>
+                          <div style={{ fontWeight: 800 }}>{a.bank}</div>
                           <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
                           {a.holder ? <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>예금주: {a.holder}</div> : null}
                         </div>
