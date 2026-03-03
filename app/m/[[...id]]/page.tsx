@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { SITE_URL } from "@/lib/config";
+import DeleteBoxClient from "@/components/DeleteBoxClient";
 
 type Notice = {
   id: string;
@@ -74,12 +75,13 @@ export default async function NoticePage(
 
   const created = new Date(data.created_at);
   const expires = new Date(data.expires_at);
+  const shareUrl = `${SITE_URL}/m/${data.id}`;
 
   return (
     <div style={{ maxWidth: 720, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
       <h1 style={{ fontSize: 34, marginBottom: 10 }}>故 {data.deceased_name}님 부고</h1>
 
-      <div style={{ padding: 14, border: "1px solid #ddd", borderRadius: 12, marginTop: 16 }}>
+      <div style={{ padding: 14, border: "1px solid #ddd", borderRadius: 12, marginTop: 16, background: "#fff" }}>
         <p style={{ margin: 0, fontSize: 16 }}>
           <b>장례식장</b> : {data.funeral_home}
         </p>
@@ -99,7 +101,7 @@ export default async function NoticePage(
       </div>
 
       {data.message ? (
-        <div style={{ marginTop: 18, padding: 14, background: "#fafafa", borderRadius: 12 }}>
+        <div style={{ marginTop: 18, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
           <p style={{ margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{data.message}</p>
         </div>
       ) : null}
@@ -109,59 +111,14 @@ export default async function NoticePage(
         <div>만료: {expires.toLocaleString()} (만료 후 자동 비공개)</div>
       </div>
 
-      <div style={{ marginTop: 22 }}>
-        <ShareBox id={data.id} />
+      <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
+        <b>공유 링크</b>
+        <div style={{ marginTop: 8, wordBreak: "break-all" }}>{shareUrl}</div>
       </div>
 
       <div style={{ marginTop: 14 }}>
-        <DeleteBox id={data.id} />
+        <DeleteBoxClient id={data.id} />
       </div>
     </div>
-  );
-}
-
-function ShareBox({ id }: { id: string }) {
-  const url = `${SITE_URL}/m/${id}`;
-
-  return (
-    <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12 }}>
-      <b>공유 링크</b>
-      <div style={{ marginTop: 8, wordBreak: "break-all" }}>{url}</div>
-      <p style={{ marginTop: 10, color: "#777", fontSize: 13, lineHeight: 1.5 }}>
-        위 링크를 카톡에 붙여 보내면 미리보기가 자동 생성됩니다.
-      </p>
-    </div>
-  );
-}
-
-function DeleteBox({ id }: { id: string }) {
-  return (
-    <form
-      action={async (formData) => {
-        "use server";
-        const deleteKey = String(formData.get("deleteKey") || "").trim();
-        if (!deleteKey) return;
-
-        await fetch(`${SITE_URL}/api/notices/${id}`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deleteKey }),
-        });
-      }}
-      style={{ padding: 14, border: "1px solid #eee", borderRadius: 12 }}
-    >
-      <b>삭제</b>
-      <p style={{ marginTop: 8, color: "#777", fontSize: 13, lineHeight: 1.5 }}>
-        생성 시 받은 삭제키를 입력하면 삭제할 수 있습니다.
-      </p>
-      <input
-        name="deleteKey"
-        placeholder="삭제키 입력"
-        style={{ width: "100%", padding: 10, marginTop: 6 }}
-      />
-      <button type="submit" style={{ width: "100%", padding: 12, marginTop: 10 }}>
-        삭제하기
-      </button>
-    </form>
   );
 }
