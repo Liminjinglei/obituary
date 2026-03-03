@@ -20,15 +20,20 @@ export default function DeleteBoxClient({ id }: { id: string }) {
         body: JSON.stringify({ deleteKey: deleteKey.trim() }),
       });
 
-      const json = await res.json().catch(() => ({}));
+      const text = await res.text(); // JSON 실패해도 원문 보기
+      let msg = text;
+
+      try {
+        const json = JSON.parse(text);
+        msg = json?.error || JSON.stringify(json);
+      } catch {}
 
       if (!res.ok) {
-        alert(json?.error || "삭제 실패");
+        alert("삭제 실패: " + msg);
         return;
       }
 
       alert("삭제되었습니다.");
-      // 삭제 후 홈으로 이동(원하면 /create로 이동해도 됨)
       window.location.href = "/";
     } finally {
       setLoading(false);
@@ -36,7 +41,7 @@ export default function DeleteBoxClient({ id }: { id: string }) {
   };
 
   return (
-    <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12 }}>
+    <div style={{ padding: 14, border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
       <b>삭제</b>
       <p style={{ marginTop: 8, color: "#777", fontSize: 13, lineHeight: 1.5 }}>
         생성 시 받은 삭제키를 입력하면 삭제할 수 있습니다.
