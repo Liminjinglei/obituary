@@ -40,3 +40,27 @@ a {
     color-scheme: dark;
   }
 }
+/* ---- obituary light theme + form fixes ---- */
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: #f6f7fb;
+  color: #111827;
+}
+
+/* 공통 입력 컴포넌트 */
+input, textarea, select {
+  color: #111827 !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px;
+  outline: none;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+a { color: #2563eb; }
