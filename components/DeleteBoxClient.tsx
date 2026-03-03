@@ -7,20 +7,18 @@ export default function DeleteBoxClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(false);
 
   const onDelete = async () => {
-    if (!deleteKey.trim()) {
+    const key = deleteKey.trim();
+    if (!key) {
       alert("삭제키를 입력해주세요.");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/notices/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deleteKey: deleteKey.trim() }),
-      });
+      const url = `/api/notices/${encodeURIComponent(id)}?deleteKey=${encodeURIComponent(key)}`;
+      const res = await fetch(url, { method: "DELETE" });
 
-      const text = await res.text(); // JSON 실패해도 원문 보기
+      const text = await res.text();
       let msg = text;
 
       try {
