@@ -19,20 +19,27 @@ export default function DeleteBoxClient({ id }: { id: string }) {
       const res = await fetch(url, { method: "DELETE" });
 
       const text = await res.text();
-      let msg = text;
+      let msg = text?.trim() || "";
 
-      try {
-        const json = JSON.parse(text);
-        msg = json?.error || JSON.stringify(json);
-      } catch {}
+      // JSON이면 error를 뽑기
+      if (msg) {
+        try {
+          const json = JSON.parse(msg);
+          msg = json?.error ? String(json.error) : JSON.stringify(json);
+        } catch {}
+      }
 
       if (!res.ok) {
-        alert("삭제 실패: " + msg);
+        // 본문이 비면 상태코드라도 보여줌
+        const fallback = msg || `(empty body) HTTP ${res.status} ${res.statusText}`;
+        alert(`삭제 실패: ${fallback}`);
         return;
       }
 
       alert("삭제되었습니다.");
       window.location.href = "/";
+    } catch (e: any) {
+      alert("삭제 실패(네트워크): " + (e?.message || String(e)));
     } finally {
       setLoading(false);
     }
