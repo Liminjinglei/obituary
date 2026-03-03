@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { SITE_URL } from "@/lib/config";
 import DeleteBoxClient from "@/components/DeleteBoxClient";
 import CopyLinkButton from "@/components/CopyLinkButton";
+import AccountsToggle from "@/components/AccountsToggle";
 
 type AccountItem = { bank: string; number: string; holder?: string };
 type BereavedItem = {
@@ -156,7 +157,7 @@ export default async function NoticePage({
 
   const all = data.bereaved_list ? [...data.bereaved_list] : [];
 
-  // 1) 자부/사위 중 attachTo가 있는 것들은 "연결 목록"으로 분리
+  // 자부/사위 attachTo 묶기
   const attached = all.filter((x) => (x.role === "자부" || x.role === "사위") && x.attachTo);
   const attachedMap = new Map<string, BereavedItem[]>();
   for (const x of attached) {
@@ -169,11 +170,9 @@ export default async function NoticePage({
     attachedMap.set(k, arr);
   }
 
-  // 2) 일반 리스트(attachTo로 붙는 자부/사위는 제외)
   const general = all.filter((x) => !((x.role === "자부" || x.role === "사위") && x.attachTo));
   const generalSorted = sortGeneral(general);
 
-  // 3) 아들/딸만 따로 렌더링(옆에 자부/사위 붙이기)
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
@@ -210,7 +209,6 @@ export default async function NoticePage({
         <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
           <b>상주</b>
 
-          {/* 아들/딸 + 연결된 자부/사위 같은 줄 */}
           {children.length ? (
             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               {children.map((c, i) => {
@@ -233,18 +231,22 @@ export default async function NoticePage({
                       ))}
                     </div>
 
+                    {/* ✅ 계좌는 기본 접힘 */}
                     {c.accounts && c.accounts.length ? (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
-                        <div style={{ fontWeight: 900, marginBottom: 8 }}>계좌</div>
-                        <div style={{ display: "grid", gap: 8 }}>
-                          {c.accounts.map((a, j) => (
-                            <div key={j} style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-                              <div style={{ fontWeight: 800 }}>{a.bank}</div>
-                              <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
-                              {a.holder ? <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>예금주: {a.holder}</div> : null}
+                      <AccountsToggle accounts={c.accounts} title="계좌" />
+                    ) : null}
+
+                    {/* 자부/사위 계좌도 동일하게 접힘 */}
+                    {inlaws.length ? (
+                      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                        {inlaws.map((x, j) =>
+                          x.accounts && x.accounts.length ? (
+                            <div key={j} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
+                              <div style={{ fontWeight: 900, marginBottom: 6 }}>{x.name} ({x.role})</div>
+                              <AccountsToggle accounts={x.accounts} title="계좌" />
                             </div>
-                          ))}
-                        </div>
+                          ) : null
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -253,7 +255,6 @@ export default async function NoticePage({
             </div>
           ) : null}
 
-          {/* 나머지 상주 */}
           {others.length ? (
             <div style={{ marginTop: children.length ? 14 : 10, display: "grid", gap: 10 }}>
               {others.map((b, i) => (
@@ -264,19 +265,9 @@ export default async function NoticePage({
                     {b.phone ? <div style={{ color: "#374151", fontSize: 13 }}>· {b.phone}</div> : null}
                   </div>
 
+                  {/* ✅ 모든 상주 계좌는 기본 접힘 */}
                   {b.accounts && b.accounts.length ? (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
-                      <div style={{ fontWeight: 900, marginBottom: 8 }}>계좌</div>
-                      <div style={{ display: "grid", gap: 8 }}>
-                        {b.accounts.map((a, j) => (
-                          <div key={j} style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-                            <div style={{ fontWeight: 800 }}>{a.bank}</div>
-                            <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
-                            {a.holder ? <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>예금주: {a.holder}</div> : null}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <AccountsToggle accounts={b.accounts} title="계좌" />
                   ) : null}
                 </div>
               ))}
@@ -299,7 +290,6 @@ export default async function NoticePage({
         <div>만료: {expires.toLocaleString()} (만료 후 자동 비공개)</div>
       </div>
 
-      {/* ✅ 공유 링크 + 복사 버튼 */}
       <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <b>공유 링크</b>
