@@ -5,7 +5,9 @@ import { useMemo, useState } from "react";
 
 type AccountRow = { bank: string; number: string; holder: string };
 type BereavedRow = {
-  role: string; // 버튼에서 고르는 신분
+  gid: string;          // 이 상주의 고유 키
+  attachTo?: string;    // 자부/사위가 연결될 아들/딸 gid
+  role: string;         // 버튼 신분
   name: string;
   phone: string;
   accounts: AccountRow[];
@@ -21,6 +23,17 @@ const ROLE_OPTIONS: string[] = [
   "백모", "숙부", "숙모", "형수",
   "제수", "매형", "매제", "기타",
 ];
+
+function makeId() {
+  // 브라우저에 crypto.randomUUID 있으면 사용
+  // (없으면 랜덤 문자열)
+  // @ts-ignore
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    // @ts-ignore
+    return crypto.randomUUID();
+  }
+  return "g_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
 
 function RolePicker({
   value,
@@ -66,16 +79,28 @@ export default function CreatePage() {
   const [message, setMessage] = useState("");
 
   const [bereavedRows, setBereavedRows] = useState<BereavedRow[]>([
-    { role: "아들", name: "", phone: "", accounts: [] },
+    { gid: makeId(), role: "아들", name: "", phone: "", accounts: [] },
   ]);
 
   const [loading, setLoading] = useState(false);
 
-  // 전송용 변환: 이름 없는 줄은 제외, 계좌는 bank+number 있는 것만
+  // 연결 대상 후보: 아들/딸
+  const attachTargets = useMemo(() => {
+    return bereavedRows
+      .filter((r) => r.role === "아들" || r.role === "딸")
+      .map((r, idx) => ({
+        gid: r.gid,
+        label: `${r.role} - ${r.name.trim() ? r.name.trim() : `(이름 미입력 ${idx + 1})`}`,
+      }));
+  }, [bereavedRows]);
+
+  // 전송용 변환
   const bereavedList = useMemo(() => {
     return bereavedRows
       .map((r, idx) => ({
-        seq: idx, // 같은 신분끼리 입력 순 유지용
+        seq: idx, // 같은 role끼리 입력순 유지
+        gid: r.gid,
+        attachTo: r.attachTo || undefined,
         role: r.role,
         name: r.name.trim(),
         phone: r.phone.trim() || undefined,
@@ -92,7 +117,10 @@ export default function CreatePage() {
   }, [bereavedRows]);
 
   const addBereaved = () => {
-    setBereavedRows((prev) => [...prev, { role: "아들", name: "", phone: "", accounts: [] }]);
+    setBereavedRows((prev) => [
+      ...prev,
+      { gid: makeId(), role: "아들", name: "", phone: "", accounts: [] },
+    ]);
   };
 
   const removeBereaved = (idx: number) => {
@@ -133,6 +161,18 @@ export default function CreatePage() {
     if (!deceasedName.trim() || !funeralHome.trim()) {
       alert("고인 성함과 장례식장은 필수입니다.");
       return;
+    }
+
+    // 자부/사위는 연결대상이 있으면 좋음(없어도 저장은 가능)
+    // 하지만 연결대상이 있는데 이름이 비어있으면 사용자 혼란 -> 경고
+    for (const r of bereavedRows) {
+      if ((r.role === "자부" || r.role === "사위") && r.attachTo) {
+        const t = bereavedRows.find((x) => x.gid === r.attachTo);
+        if (t && !t.name.trim()) {
+          alert("자부/사위를 연결한 아들/딸의 이름이 비어있습니다. 먼저 이름을 입력해주세요.");
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -222,9 +262,37 @@ export default function CreatePage() {
 
           <div style={{ display: "grid", gap: 12 }}>
             {bereavedRows.map((r, idx) => (
-              <div key={idx} style={{ border: "1px solid #eee", borderRadius: 14, padding: 12, background: "#fafafa" }}>
+              <div key={r.gid} style={{ border: "1px solid #eee", borderRadius: 14, padding: 12, background: "#fafafa" }}>
                 <div style={{ fontWeight: 900, marginBottom: 10 }}>신분 선택</div>
-                <RolePicker value={r.role} onChange={(v) => updateBereaved(idx, { role: v })} />
+                <RolePicker
+                  value={r.role}
+                  onChange={(v) => {
+                    // 역할이 바뀌면 attachTo 초기화(자부/사위 아닐 때)
+                    const next: Partial<BereavedRow> = { role: v };
+                    if (v !== "자부" && v !== "사위") next.attachTo = undefined;
+                    updateBereaved(idx, next);
+                  }}
+                />
+
+                {/* 자부/사위일 때 연결 대상 선택 */}
+                {(r.role === "자부" || r.role === "사위") ? (
+                  <div style={{ marginTop: 12 }}>
+                    <label>연결 대상(아들/딸) (선택)</label>
+                    <select
+                      value={r.attachTo || ""}
+                      onChange={(e) => updateBereaved(idx, { attachTo: e.target.value || undefined })}
+                      style={{ width: "100%", padding: 10, marginTop: 6 }}
+                    >
+                      <option value="">연결 안 함</option>
+                      {attachTargets.map((t) => (
+                        <option key={t.gid} value={t.gid}>{t.label}</option>
+                      ))}
+                    </select>
+                    <div style={{ marginTop: 6, color: "#6b7280", fontSize: 12, lineHeight: 1.4 }}>
+                      • 연결 대상을 선택하면, 부고 화면에서 해당 아들/딸 옆에 같은 줄로 표시됩니다.
+                    </div>
+                  </div>
+                ) : null}
 
                 <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                   <div>
@@ -313,8 +381,7 @@ export default function CreatePage() {
           </div>
 
           <p style={{ marginTop: 10, color: "#777", fontSize: 13, lineHeight: 1.5 }}>
-            • 이름이 비어있는 상주는 저장되지 않습니다.<br />
-            • 표시할 때는 입력 순서와 무관하게 신분(항렬) 기준으로 자동 정렬됩니다.
+            • “자부/사위”는 연결 대상을 선택하면 부고 화면에서 해당 아들/딸 옆에 같이 표시됩니다.
           </p>
         </div>
 

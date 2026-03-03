@@ -4,7 +4,15 @@ import { SITE_URL } from "@/lib/config";
 import DeleteBoxClient from "@/components/DeleteBoxClient";
 
 type AccountItem = { bank: string; number: string; holder?: string };
-type BereavedItem = { seq?: number; role: string; name: string; phone?: string; accounts?: AccountItem[] };
+type BereavedItem = {
+  seq?: number;
+  gid?: string;
+  attachTo?: string;
+  role: string;
+  name: string;
+  phone?: string;
+  accounts?: AccountItem[];
+};
 
 type Notice = {
   id: string;
@@ -21,14 +29,13 @@ type Notice = {
 };
 
 function roleRank(role: string): number {
-  // “항렬(세대) 높은 순” + 일반적인 표시 순서
   const r = role.trim();
   const map: Record<string, number> = {
     "부(父)": 0, "모(母)": 1,
-
     "배우자": 10,
 
     "아들": 20, "딸": 21,
+    // 자부/사위는 원칙상 자식 라인에 붙여서 보이므로, 단독 노출될 때만 뒤에 배치
     "자부": 22, "사위": 23,
 
     "손자": 30, "손녀": 31, "외손자": 32, "외손녀": 33,
@@ -44,16 +51,16 @@ function roleRank(role: string): number {
   return map[r] ?? 98;
 }
 
-function sortBereaved(list: BereavedItem[]): BereavedItem[] {
-  // rank → seq 순 (같은 신분끼리는 입력 순 유지)
+function seqNum(x: any) {
+  return Number.isFinite(Number(x)) ? Number(x) : 9999;
+}
+
+function sortGeneral(list: BereavedItem[]) {
   return [...list].sort((a, b) => {
     const ra = roleRank(a.role);
     const rb = roleRank(b.role);
     if (ra !== rb) return ra - rb;
-
-    const sa = Number.isFinite(Number(a.seq)) ? Number(a.seq) : 9999;
-    const sb = Number.isFinite(Number(b.seq)) ? Number(b.seq) : 9999;
-    return sa - sb;
+    return seqNum(a.seq) - seqNum(b.seq);
   });
 }
 
@@ -118,7 +125,30 @@ export default async function NoticePage(
   const created = new Date(data.created_at);
   const expires = new Date(data.expires_at);
   const shareUrl = `${SITE_URL}/m/${data.id}`;
-  const bereavedSorted = data.bereaved_list ? sortBereaved(data.bereaved_list) : [];
+
+  const all = data.bereaved_list ? [...data.bereaved_list] : [];
+
+  // 1) 자부/사위 중 attachTo가 있는 것들은 "연결 목록"으로 분리
+  const attached = all.filter((x) => (x.role === "자부" || x.role === "사위") && x.attachTo);
+  const attachedMap = new Map<string, BereavedItem[]>();
+  for (const x of attached) {
+    const key = String(x.attachTo);
+    if (!attachedMap.has(key)) attachedMap.set(key, []);
+    attachedMap.get(key)!.push(x);
+  }
+  // 같은 줄 내에서는 입력순( seq ) 유지
+  for (const [k, arr] of attachedMap.entries()) {
+    arr.sort((a, b) => seqNum(a.seq) - seqNum(b.seq));
+    attachedMap.set(k, arr);
+  }
+
+  // 2) 기본 리스트(일반 정렬 대상): attachTo로 붙는 자부/사위는 제외
+  const general = all.filter((x) => !((x.role === "자부" || x.role === "사위") && x.attachTo));
+  const generalSorted = sortGeneral(general);
+
+  // 3) 아들/딸 라인만 따로 렌더링하면서 옆에 붙이기
+  const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
+  const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
   return (
     <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
@@ -149,35 +179,83 @@ export default async function NoticePage(
         ) : null}
       </div>
 
-      {bereavedSorted.length ? (
+      {(children.length || others.length) ? (
         <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
           <b>상주</b>
-          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-            {bereavedSorted.map((b, i) => (
-              <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-                  <div style={{ fontWeight: 900 }}>{b.name}</div>
-                  <div style={{ color: "#6b7280", fontSize: 13 }}>{b.role}</div>
-                  {b.phone ? <div style={{ color: "#374151", fontSize: 13 }}>· {b.phone}</div> : null}
-                </div>
 
-                {b.accounts && b.accounts.length ? (
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
-                    <div style={{ fontWeight: 900, marginBottom: 8 }}>계좌</div>
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {b.accounts.map((a, j) => (
-                        <div key={j} style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-                          <div style={{ fontWeight: 800 }}>{a.bank}</div>
-                          <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
-                          {a.holder ? <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>예금주: {a.holder}</div> : null}
-                        </div>
+          {/* 아들/딸 + 연결된 자부/사위는 같은 줄 */}
+          {children.length ? (
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              {children.map((c, i) => {
+                const key = c.gid || ""; // gid 없으면 붙임 불가
+                const inlaws = key ? (attachedMap.get(key) || []) : [];
+                return (
+                  <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 900 }}>{c.name}</span>
+                      <span style={{ color: "#6b7280", fontSize: 13 }}>{c.role}</span>
+                      {c.phone ? <span style={{ color: "#374151", fontSize: 13 }}>· {c.phone}</span> : null}
+
+                      {inlaws.length ? <span style={{ color: "#d1d5db" }}>|</span> : null}
+                      {inlaws.map((x, j) => (
+                        <span key={j} style={{ display: "inline-flex", gap: 6, alignItems: "baseline" }}>
+                          <span style={{ fontWeight: 800 }}>{x.name}</span>
+                          <span style={{ color: "#6b7280", fontSize: 13 }}>{x.role}</span>
+                          {x.phone ? <span style={{ color: "#374151", fontSize: 13 }}>· {x.phone}</span> : null}
+                        </span>
                       ))}
                     </div>
+
+                    {/* 계좌는 해당 인물(아들/딸) 본인 것만 여기서 보여주고 싶으면 유지 */}
+                    {c.accounts && c.accounts.length ? (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
+                        <div style={{ fontWeight: 900, marginBottom: 8 }}>계좌</div>
+                        <div style={{ display: "grid", gap: 8 }}>
+                          {c.accounts.map((a, j) => (
+                            <div key={j} style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
+                              <div style={{ fontWeight: 800 }}>{a.bank}</div>
+                              <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
+                              {a.holder ? <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>예금주: {a.holder}</div> : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {/* 나머지 신분들은 일반 리스트로 */}
+          {others.length ? (
+            <div style={{ marginTop: children.length ? 14 : 10, display: "grid", gap: 10 }}>
+              {others.map((b, i) => (
+                <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 900 }}>{b.name}</div>
+                    <div style={{ color: "#6b7280", fontSize: 13 }}>{b.role}</div>
+                    {b.phone ? <div style={{ color: "#374151", fontSize: 13 }}>· {b.phone}</div> : null}
+                  </div>
+
+                  {b.accounts && b.accounts.length ? (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
+                      <div style={{ fontWeight: 900, marginBottom: 8 }}>계좌</div>
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {b.accounts.map((a, j) => (
+                          <div key={j} style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
+                            <div style={{ fontWeight: 800 }}>{a.bank}</div>
+                            <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
+                            {a.holder ? <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>예금주: {a.holder}</div> : null}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

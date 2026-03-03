@@ -10,7 +10,15 @@ function getClientIp(h: Headers) {
 }
 
 type AccountItem = { bank: string; number: string; holder?: string };
-type BereavedItem = { seq?: number; role: string; name: string; phone?: string; accounts?: AccountItem[] };
+type BereavedItem = {
+  seq?: number;
+  gid?: string;
+  attachTo?: string;
+  role: string;
+  name: string;
+  phone?: string;
+  accounts?: AccountItem[];
+};
 
 function sanitizeAccounts(input: any): AccountItem[] | undefined {
   if (!Array.isArray(input)) return undefined;
@@ -37,6 +45,8 @@ function sanitizeBereavedList(input: any): BereavedItem[] | null {
     const name = String(raw?.name ?? "").trim();
     const phone = String(raw?.phone ?? "").trim();
     const seqRaw = raw?.seq;
+    const gid = String(raw?.gid ?? "").trim();
+    const attachTo = String(raw?.attachTo ?? "").trim();
 
     if (!role || !name) continue;
 
@@ -45,13 +55,15 @@ function sanitizeBereavedList(input: any): BereavedItem[] | null {
 
     out.push({
       seq,
+      gid: gid || undefined,
+      attachTo: attachTo || undefined,
       role,
       name,
       phone: phone || undefined,
       accounts,
     });
 
-    if (out.length >= 20) break; // 상주 최대 20명
+    if (out.length >= 30) break;
   }
 
   return out.length ? out : null;
@@ -85,7 +97,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "고인 나이는 0~120 범위의 숫자만 가능합니다." }, { status: 400 });
   }
 
-  // 1시간당 생성 제한
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count } = await supabaseServer
     .from("notices")
