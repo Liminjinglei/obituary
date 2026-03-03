@@ -1,0 +1,67 @@
+import { NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { EXPIRE_DAYS, RATE_LIMIT_PER_HOUR } from "@/lib/config";
+import { randomDeleteKey, randomId } from "@/lib/ids";
+
+function getClientIp(h: Headers) {
+  const xf = h.get("x-forwarded-for");
+  if (xf) return xf.split(",")[0].trim();
+  return h.get("x-real-ip") || "unknown";
+}
+
+export async function POST(req: Request) {
+  const ip = getClientIp(req.headers);
+  const ua = req.headers.get("user-agent") || "";
+
+  const body = await req.json().catch(() => ({}));
+  const deceasedName = String(body.deceasedName || "").trim();
+  const funeralHome = String(body.funeralHome || "").trim();
+  const room = String(body.room || "").trim();
+  const mapUrl = String(body.mapUrl || "").trim();
+  const message = String(body.message || "").trim();
+
+  if (!deceasedName || !funeralHome) {
+    return NextResponse.json({ error: "고인 성함과 장례식장은 필수입니다." }, { status: 400 });
+  }
+
+  // 스팸 방지: 같은 IP에서 최근 1시간 생성 제한
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count } = await supabaseServer
+    .from("notices")
+    .select("*", { count: "exact", head: true })
+    .eq("created_ip", ip)
+    .gte("created_at", since);
+
+  if ((count || 0) >= RATE_LIMIT_PER_HOUR) {
+    return NextResponse.json(
+      { error: `생성 제한: 같은 네트워크에서 1시간에 최대 ${RATE_LIMIT_PER_HOUR}개까지 생성 가능합니다.` },
+      { status: 429 }
+    );
+  }
+
+  const summary = `${funeralHome}${room ? ` · ${room}` : ""}`;
+  const expiresAt = new Date(Date.now() + EXPIRE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  const id = randomId(10);
+  const deleteKey = randomDeleteKey(18);
+
+  const { error } = await supabaseServer.from("notices").insert({
+    id,
+    deceased_name: deceasedName,
+    funeral_home: funeralHome,
+    room: room || null,
+    summary,
+    map_url: mapUrl || null,
+    message: message || null,
+    delete_key: deleteKey,
+    expires_at: expiresAt,
+    created_ip: ip,
+    created_ua: ua,
+  });
+
+  if (error) {
+    return NextResponse.json({ error: "DB 저장 실패: " + error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ id, deleteKey, expiresAt });
+}

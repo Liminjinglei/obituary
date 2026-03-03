@@ -1,66 +1,30 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div style={{ maxWidth: 720, margin: "60px auto", padding: 16, fontFamily: "system-ui" }}>
+      <h1 style={{ fontSize: 34, marginBottom: 10 }}>부고장 링크 생성</h1>
+      <p style={{ color: "#555", lineHeight: 1.7 }}>
+        부고장을 작성하면 공유 링크가 생성됩니다. 카카오톡에 링크를 붙여 보내면 썸네일과 요약 텍스트가 표시됩니다.
+      </p>
+
+      <Link
+        href="/create"
+        style={{
+          display: "inline-block",
+          marginTop: 18,
+          padding: "12px 16px",
+          border: "1px solid #ddd",
+          borderRadius: 10,
+          textDecoration: "none",
+        }}
+      >
+        부고장 작성하러 가기 →
+      </Link>
+
+      <p style={{ marginTop: 18, color: "#777", fontSize: 13 }}>
+        검색엔진 노출은 차단되어 있으며, 생성된 부고는 일정 기간 후 자동 만료됩니다.
+      </p>
     </div>
   );
 }
