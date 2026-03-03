@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { SITE_URL } from "@/lib/config";
 import DeleteBoxClient from "@/components/DeleteBoxClient";
+import CopyLinkButton from "@/components/CopyLinkButton";
 
 type AccountItem = { bank: string; number: string; holder?: string };
 type BereavedItem = {
@@ -31,20 +32,41 @@ type Notice = {
 function roleRank(role: string): number {
   const r = role.trim();
   const map: Record<string, number> = {
-    "부(父)": 0, "모(母)": 1,
+    "부(父)": 0,
+    "모(母)": 1,
     "배우자": 10,
 
-    "아들": 20, "딸": 21,
-    // 자부/사위는 원칙상 자식 라인에 붙여서 보이므로, 단독 노출될 때만 뒤에 배치
-    "자부": 22, "사위": 23,
+    "아들": 20,
+    "딸": 21,
+    "자부": 22,
+    "사위": 23,
 
-    "손자": 30, "손녀": 31, "외손자": 32, "외손녀": 33,
-    "손부": 34, "손서": 35, "외손부": 36, "외손서": 37,
+    "손자": 30,
+    "손녀": 31,
+    "외손자": 32,
+    "외손녀": 33,
+    "손부": 34,
+    "손서": 35,
+    "외손부": 36,
+    "외손서": 37,
 
-    "형(兄)": 40, "오빠": 41, "누나": 42, "언니": 43, "남동생": 44, "여동생": 45,
+    "형(兄)": 40,
+    "오빠": 41,
+    "누나": 42,
+    "언니": 43,
+    "남동생": 44,
+    "여동생": 45,
 
-    "백부": 50, "백모": 51, "숙부": 52, "숙모": 53, "고모": 54, "이모": 55,
-    "형수": 56, "제수": 57, "매형": 58, "매제": 59,
+    "백부": 50,
+    "백모": 51,
+    "숙부": 52,
+    "숙모": 53,
+    "고모": 54,
+    "이모": 55,
+    "형수": 56,
+    "제수": 57,
+    "매형": 58,
+    "매제": 59,
 
     "기타": 99,
   };
@@ -67,7 +89,9 @@ function sortGeneral(list: BereavedItem[]) {
 async function getNotice(id: string): Promise<Notice | null> {
   const { data } = await supabaseServer
     .from("notices")
-    .select("id,deceased_name,deceased_age,funeral_home,room,summary,map_url,message,bereaved_list,expires_at,created_at")
+    .select(
+      "id,deceased_name,deceased_age,funeral_home,room,summary,map_url,message,bereaved_list,expires_at,created_at"
+    )
     .eq("id", id)
     .single();
 
@@ -80,9 +104,11 @@ async function getNotice(id: string): Promise<Notice | null> {
   return data as Notice;
 }
 
-export async function generateMetadata(
-  { params }: { params: Promise<{ id?: string[] }> }
-): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id?: string[] }>;
+}): Promise<Metadata> {
   const p = await params;
   const id = p.id?.[0] || "";
   const notice = id ? await getNotice(id) : null;
@@ -104,9 +130,11 @@ export async function generateMetadata(
   };
 }
 
-export default async function NoticePage(
-  { params }: { params: Promise<{ id?: string[] }> }
-) {
+export default async function NoticePage({
+  params,
+}: {
+  params: Promise<{ id?: string[] }>;
+}) {
   const p = await params;
   const id = p.id?.[0] || "";
   const data = id ? await getNotice(id) : null;
@@ -136,17 +164,16 @@ export default async function NoticePage(
     if (!attachedMap.has(key)) attachedMap.set(key, []);
     attachedMap.get(key)!.push(x);
   }
-  // 같은 줄 내에서는 입력순( seq ) 유지
   for (const [k, arr] of attachedMap.entries()) {
     arr.sort((a, b) => seqNum(a.seq) - seqNum(b.seq));
     attachedMap.set(k, arr);
   }
 
-  // 2) 기본 리스트(일반 정렬 대상): attachTo로 붙는 자부/사위는 제외
+  // 2) 일반 리스트(attachTo로 붙는 자부/사위는 제외)
   const general = all.filter((x) => !((x.role === "자부" || x.role === "사위") && x.attachTo));
   const generalSorted = sortGeneral(general);
 
-  // 3) 아들/딸 라인만 따로 렌더링하면서 옆에 붙이기
+  // 3) 아들/딸만 따로 렌더링(옆에 자부/사위 붙이기)
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
@@ -183,12 +210,12 @@ export default async function NoticePage(
         <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
           <b>상주</b>
 
-          {/* 아들/딸 + 연결된 자부/사위는 같은 줄 */}
+          {/* 아들/딸 + 연결된 자부/사위 같은 줄 */}
           {children.length ? (
             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               {children.map((c, i) => {
-                const key = c.gid || ""; // gid 없으면 붙임 불가
-                const inlaws = key ? (attachedMap.get(key) || []) : [];
+                const key = c.gid || "";
+                const inlaws = key ? attachedMap.get(key) || [] : [];
                 return (
                   <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
                     <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
@@ -206,7 +233,6 @@ export default async function NoticePage(
                       ))}
                     </div>
 
-                    {/* 계좌는 해당 인물(아들/딸) 본인 것만 여기서 보여주고 싶으면 유지 */}
                     {c.accounts && c.accounts.length ? (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
                         <div style={{ fontWeight: 900, marginBottom: 8 }}>계좌</div>
@@ -227,7 +253,7 @@ export default async function NoticePage(
             </div>
           ) : null}
 
-          {/* 나머지 신분들은 일반 리스트로 */}
+          {/* 나머지 상주 */}
           {others.length ? (
             <div style={{ marginTop: children.length ? 14 : 10, display: "grid", gap: 10 }}>
               {others.map((b, i) => (
@@ -273,8 +299,12 @@ export default async function NoticePage(
         <div>만료: {expires.toLocaleString()} (만료 후 자동 비공개)</div>
       </div>
 
+      {/* ✅ 공유 링크 + 복사 버튼 */}
       <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
-        <b>공유 링크</b>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <b>공유 링크</b>
+          <CopyLinkButton text={shareUrl} />
+        </div>
         <div style={{ marginTop: 8, wordBreak: "break-all" }}>{shareUrl}</div>
       </div>
 
