@@ -172,7 +172,6 @@ export default async function NoticePage({
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
-  // 카드 크기 통일
   const cardStyle: any = {
     padding: 14,
     border: "1px solid #f0f0f0",
@@ -185,21 +184,30 @@ export default async function NoticePage({
     gap: 10,
   };
 
-  // ✅ 폰트/간격/자간을 “살짝” 줄임
-  const nameStyle: any = { fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em" };
-  const metaStyle: any = { color: "#6b7280", fontSize: 12, letterSpacing: "-0.02em" };
-  const phoneStyle: any = { color: "#374151", fontSize: 12, letterSpacing: "-0.02em" };
+  // ✅ “적당한 중간점” 자간 통일 (너무 좁지 않게)
+  const commonLS = "-0.005em";
 
-  const sepDot = <span style={metaStyle}>·</span>;
-  const sepBar = <span style={{ ...metaStyle, color: "#d1d5db" }}>|</span>;
+  // ✅ 폰트는 살짝만 줄임
+  const nameStyle: any = { fontWeight: 900, fontSize: 15, letterSpacing: commonLS };
+  const metaStyle: any = { color: "#6b7280", fontSize: 13, letterSpacing: commonLS };
+  const phoneStyle: any = { color: "#374151", fontSize: 13, letterSpacing: commonLS };
+
+  // ✅ 파트 사이 간격(공백) 통일: “붙어 보이는 현상” 해결 핵심
+  const gapRole = { marginLeft: 6 };
+  const gapDot = { margin: "0 6px" };
+  const gapBar = { margin: "0 10px" };
+  const gapBetweenPeople = { marginLeft: 12 };
+
+  const Dot = () => <span style={{ ...metaStyle, ...gapDot }}>·</span>;
+  const Bar = () => <span style={{ ...metaStyle, color: "#d1d5db", ...gapBar }}>|</span>;
 
   const PersonInline = (p: BereavedItem) => (
     <>
       <span style={nameStyle}>{p.name}</span>
-      <span style={metaStyle}>{p.role}</span>
+      <span style={{ ...metaStyle, ...gapRole }}>{p.role}</span>
       {p.phone ? (
         <>
-          {sepDot}
+          <Dot />
           <span style={phoneStyle}>{p.phone}</span>
         </>
       ) : null}
@@ -249,12 +257,12 @@ export default async function NoticePage({
 
                 return (
                   <div key={i} style={cardStyle}>
-                    {/* ✅ 여기 한 줄은 자동 축소로 “넘치면 줄 전체가 살짝 작아져서” 한 줄에 모두 표시 */}
-                    <FitLine minScale={0.78}>
+                    {/* ✅ 한 줄 전체가 “살짝만” 축소되어 들어가되, 간격은 통일되어 답답하지 않게 */}
+                    <FitLine minScale={0.80}>
                       {PersonInline(c)}
-                      {inlaws.length ? <span style={{ margin: "0 6px" }}>{sepBar}</span> : null}
+                      {inlaws.length ? <Bar /> : null}
                       {inlaws.map((x, j) => (
-                        <span key={j} style={{ marginLeft: j === 0 ? 0 : 8 }}>
+                        <span key={j} style={j === 0 ? undefined : gapBetweenPeople}>
                           {PersonInline(x)}
                         </span>
                       ))}
@@ -267,7 +275,7 @@ export default async function NoticePage({
                           x.accounts && x.accounts.length ? (
                             <div key={j} style={{ marginTop: 8 }}>
                               <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 12, color: "#374151" }}>
-                                {x.name}({x.role})
+                                {x.name} ({x.role})
                               </div>
                               <AccountsToggle accounts={x.accounts} title="계좌" />
                             </div>
@@ -287,7 +295,7 @@ export default async function NoticePage({
             <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               {others.map((b, i) => (
                 <div key={i} style={cardStyle}>
-                  <FitLine minScale={0.78}>{PersonInline(b)}</FitLine>
+                  <FitLine minScale={0.80}>{PersonInline(b)}</FitLine>
                   {b.accounts && b.accounts.length ? <AccountsToggle accounts={b.accounts} title="계좌" /> : <div />}
                 </div>
               ))}
