@@ -4,6 +4,7 @@ import { SITE_URL } from "@/lib/config";
 import DeleteBoxClient from "@/components/DeleteBoxClient";
 import CopyLinkButton from "@/components/CopyLinkButton";
 import AccountsToggle from "@/components/AccountsToggle";
+import FitLine from "@/components/FitLine";
 
 type AccountItem = { bank: string; number: string; holder?: string };
 type BereavedItem = {
@@ -85,7 +86,9 @@ function sortGeneral(list: BereavedItem[]) {
 async function getNotice(id: string): Promise<Notice | null> {
   const { data } = await supabaseServer
     .from("notices")
-    .select("id,deceased_name,deceased_age,funeral_home,room,summary,map_url,message,bereaved_list,expires_at,created_at")
+    .select(
+      "id,deceased_name,deceased_age,funeral_home,room,summary,map_url,message,bereaved_list,expires_at,created_at"
+    )
     .eq("id", id)
     .single();
 
@@ -98,7 +101,11 @@ async function getNotice(id: string): Promise<Notice | null> {
   return data as Notice;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id?: string[] }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id?: string[] }>;
+}): Promise<Metadata> {
   const p = await params;
   const id = p.id?.[0] || "";
   const notice = id ? await getNotice(id) : null;
@@ -120,7 +127,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id?: stri
   };
 }
 
-export default async function NoticePage({ params }: { params: Promise<{ id?: string[] }> }) {
+export default async function NoticePage({
+  params,
+}: {
+  params: Promise<{ id?: string[] }>;
+}) {
   const p = await params;
   const id = p.id?.[0] || "";
   const data = id ? await getNotice(id) : null;
@@ -129,17 +140,20 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
     return (
       <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
         <h1 style={{ fontSize: 26 }}>부고장을 찾을 수 없습니다</h1>
-        <p style={{ color: "#555", lineHeight: 1.6 }}>링크가 잘못되었거나, 이미 만료/삭제된 부고장입니다.</p>
+        <p style={{ color: "#555", lineHeight: 1.6 }}>
+          링크가 잘못되었거나, 이미 만료/삭제된 부고장입니다.
+        </p>
       </div>
     );
   }
 
+  const shareUrl = `${SITE_URL}/m/${data.id}`;
   const created = new Date(data.created_at);
   const expires = new Date(data.expires_at);
-  const shareUrl = `${SITE_URL}/m/${data.id}`;
 
   const all = data.bereaved_list ? [...data.bereaved_list] : [];
 
+  // 자부/사위 attachTo 묶기
   const attached = all.filter((x) => (x.role === "자부" || x.role === "사위") && x.attachTo);
   const attachedMap = new Map<string, BereavedItem[]>();
   for (const x of attached) {
@@ -158,34 +172,39 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
-  // ✅ 한 줄 강제 + 길면 가로 스크롤
-  const oneLineRowStyle: any = {
-    display: "flex",
-    gap: 8,
-    alignItems: "baseline",
-    flexWrap: "nowrap",
-    whiteSpace: "nowrap",
-    overflowX: "auto",
-    WebkitOverflowScrolling: "touch",
-    minWidth: 0,
-  };
-
-  // ✅ 카드 크기만 통일(글씨는 기본 크기 유지)
+  // 카드 크기 통일
   const cardStyle: any = {
     padding: 14,
     border: "1px solid #f0f0f0",
     borderRadius: 16,
     background: "#fff",
-    minHeight: 92, // 너무 커 보이면 84~96 사이로 조절
+    minHeight: 92,
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
     gap: 10,
   };
 
-  const nameStyle: any = { fontWeight: 900, fontSize: 18 };
-  const metaStyle: any = { color: "#6b7280", fontSize: 14 };
-  const phoneStyle: any = { color: "#374151", fontSize: 14 };
+  // ✅ 폰트/간격/자간을 “살짝” 줄임
+  const nameStyle: any = { fontWeight: 900, fontSize: 15, letterSpacing: "-0.02em" };
+  const metaStyle: any = { color: "#6b7280", fontSize: 12, letterSpacing: "-0.02em" };
+  const phoneStyle: any = { color: "#374151", fontSize: 12, letterSpacing: "-0.02em" };
+
+  const sepDot = <span style={metaStyle}>·</span>;
+  const sepBar = <span style={{ ...metaStyle, color: "#d1d5db" }}>|</span>;
+
+  const PersonInline = (p: BereavedItem) => (
+    <>
+      <span style={nameStyle}>{p.name}</span>
+      <span style={metaStyle}>{p.role}</span>
+      {p.phone ? (
+        <>
+          {sepDot}
+          <span style={phoneStyle}>{p.phone}</span>
+        </>
+      ) : null}
+    </>
+  );
 
   return (
     <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
@@ -230,20 +249,16 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
 
                 return (
                   <div key={i} style={cardStyle}>
-                    <div style={oneLineRowStyle}>
-                      <span style={nameStyle}>{c.name}</span>
-                      <span style={metaStyle}>{c.role}</span>
-                      {c.phone ? <span style={phoneStyle}>· {c.phone}</span> : null}
-
-                      {inlaws.length ? <span style={{ ...metaStyle, color: "#d1d5db" }}>|</span> : null}
+                    {/* ✅ 여기 한 줄은 자동 축소로 “넘치면 줄 전체가 살짝 작아져서” 한 줄에 모두 표시 */}
+                    <FitLine minScale={0.78}>
+                      {PersonInline(c)}
+                      {inlaws.length ? <span style={{ margin: "0 6px" }}>{sepBar}</span> : null}
                       {inlaws.map((x, j) => (
-                        <span key={j} style={{ display: "inline-flex", gap: 6, alignItems: "baseline" }}>
-                          <span style={nameStyle}>{x.name}</span>
-                          <span style={metaStyle}>{x.role}</span>
-                          {x.phone ? <span style={phoneStyle}>· {x.phone}</span> : null}
+                        <span key={j} style={{ marginLeft: j === 0 ? 0 : 8 }}>
+                          {PersonInline(x)}
                         </span>
                       ))}
-                    </div>
+                    </FitLine>
 
                     {hasAccounts ? (
                       <div>
@@ -251,8 +266,8 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
                         {inlaws.map((x, j) =>
                           x.accounts && x.accounts.length ? (
                             <div key={j} style={{ marginTop: 8 }}>
-                              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 14 }}>
-                                {x.name} ({x.role})
+                              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 12, color: "#374151" }}>
+                                {x.name}({x.role})
                               </div>
                               <AccountsToggle accounts={x.accounts} title="계좌" />
                             </div>
@@ -272,12 +287,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
             <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               {others.map((b, i) => (
                 <div key={i} style={cardStyle}>
-                  <div style={oneLineRowStyle}>
-                    <span style={nameStyle}>{b.name}</span>
-                    <span style={metaStyle}>{b.role}</span>
-                    {b.phone ? <span style={phoneStyle}>· {b.phone}</span> : null}
-                  </div>
-
+                  <FitLine minScale={0.78}>{PersonInline(b)}</FitLine>
                   {b.accounts && b.accounts.length ? <AccountsToggle accounts={b.accounts} title="계좌" /> : <div />}
                 </div>
               ))}
