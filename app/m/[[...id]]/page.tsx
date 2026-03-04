@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Fragment } from "react";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { SITE_URL } from "@/lib/config";
 import DeleteBoxClient from "@/components/DeleteBoxClient";
@@ -172,46 +173,44 @@ export default async function NoticePage({
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
+  // ✅ 카드가 모바일에서 가로로 튀어나가지 않게 (중요)
   const cardStyle: any = {
     padding: 14,
     border: "1px solid #f0f0f0",
     borderRadius: 16,
     background: "#fff",
     minHeight: 92,
+    minWidth: 0, // ✅ 이게 있어야 nowrap가 있어도 카드가 화면 밖으로 안나감
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
     gap: 10,
   };
 
-  // ✅ “적당한 중간점” 자간 통일 (너무 좁지 않게)
-  const commonLS = "-0.005em";
+  // ✅ “간격/자간” 통일: 여기 값만 바꾸면 전체가 동일하게 움직임
+  const commonLS = "0em";         // 자간 통일(자연스럽게 0)
+  const personGap = 5;            // 한 사람 내부(이름-신분-·-번호) 간격
+  const groupGap = 6;             // 사람/구분자(|) 사이 간격
 
-  // ✅ 폰트는 살짝만 줄임
   const nameStyle: any = { fontWeight: 900, fontSize: 15, letterSpacing: commonLS };
   const metaStyle: any = { color: "#6b7280", fontSize: 13, letterSpacing: commonLS };
   const phoneStyle: any = { color: "#374151", fontSize: 13, letterSpacing: commonLS };
 
-  // ✅ 파트 사이 간격(공백) 통일: “붙어 보이는 현상” 해결 핵심
-  const gapRole = { marginLeft: 6 };
-  const gapDot = { margin: "0 6px" };
-  const gapBar = { margin: "0 10px" };
-  const gapBetweenPeople = { marginLeft: 12 };
-
-  const Dot = () => <span style={{ ...metaStyle, ...gapDot }}>·</span>;
-  const Bar = () => <span style={{ ...metaStyle, color: "#d1d5db", ...gapBar }}>|</span>;
+  const personWrap: any = { display: "inline-flex", alignItems: "baseline", gap: personGap, letterSpacing: commonLS };
+  const lineWrap: any = { display: "inline-flex", alignItems: "baseline", gap: groupGap, whiteSpace: "nowrap" };
+  const barStyle: any = { ...metaStyle, color: "#d1d5db" };
 
   const PersonInline = (p: BereavedItem) => (
-    <>
+    <span style={personWrap}>
       <span style={nameStyle}>{p.name}</span>
-      <span style={{ ...metaStyle, ...gapRole }}>{p.role}</span>
+      <span style={metaStyle}>{p.role}</span>
       {p.phone ? (
         <>
-          <Dot />
+          <span style={metaStyle}>·</span>
           <span style={phoneStyle}>{p.phone}</span>
         </>
       ) : null}
-    </>
+    </span>
   );
 
   return (
@@ -257,15 +256,17 @@ export default async function NoticePage({
 
                 return (
                   <div key={i} style={cardStyle}>
-                    {/* ✅ 한 줄 전체가 “살짝만” 축소되어 들어가되, 간격은 통일되어 답답하지 않게 */}
-                    <FitLine minScale={0.80}>
-                      {PersonInline(c)}
-                      {inlaws.length ? <Bar /> : null}
-                      {inlaws.map((x, j) => (
-                        <span key={j} style={j === 0 ? undefined : gapBetweenPeople}>
-                          {PersonInline(x)}
-                        </span>
-                      ))}
+                    {/* ✅ FitLine에는 “자식 1개(span)”만 넣어서 gap이 겹치지 않게 */}
+                    <FitLine minScale={0.82}>
+                      <span style={lineWrap}>
+                        {PersonInline(c)}
+                        {inlaws.map((x, j) => (
+                          <Fragment key={j}>
+                            <span style={barStyle}>|</span>
+                            {PersonInline(x)}
+                          </Fragment>
+                        ))}
+                      </span>
                     </FitLine>
 
                     {hasAccounts ? (
@@ -295,7 +296,9 @@ export default async function NoticePage({
             <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               {others.map((b, i) => (
                 <div key={i} style={cardStyle}>
-                  <FitLine minScale={0.80}>{PersonInline(b)}</FitLine>
+                  <FitLine minScale={0.82}>
+                    <span style={lineWrap}>{PersonInline(b)}</span>
+                  </FitLine>
                   {b.accounts && b.accounts.length ? <AccountsToggle accounts={b.accounts} title="계좌" /> : <div />}
                 </div>
               ))}
