@@ -123,7 +123,7 @@ export async function generateMetadata({
   const base = host ? `${proto}://${host}` : SITE_URL;
 
   const url = id ? `${base}/m/${id}` : `${base}/m`;
-  const image = `${base}/og-default.png`;
+  const image = `${base}/og-v4.png`;
 
   return {
     title,
