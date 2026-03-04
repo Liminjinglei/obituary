@@ -138,8 +138,21 @@ export default async function NoticePage({
   const data = id ? await getNotice(id) : null;
 
   if (!data) {
-    return (
-      <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
+    return (</div>
+
+      <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 16, background: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <b>공유 링크</b>
+          <CopyLinkButton text={shareUrl} />
+        </div>
+        <div style={{ marginTop: 8, wordBreak: "break-all" }}>{shareUrl}</div>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <DeleteBoxClient id={data.id} />
+      </div>
+
+<div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
         <h1 style={{ fontSize: 26 }}>부고장을 찾을 수 없습니다</h1>
         <p style={{ color: "#555", lineHeight: 1.6 }}>
           링크가 잘못되었거나, 이미 만료/삭제된 부고장입니다.
@@ -319,19 +332,7 @@ export default async function NoticePage({
       <div style={{ marginTop: 18, color: "#666", fontSize: 13, lineHeight: 1.6 }}>
         <div>생성: {created.toLocaleString()}</div>
         <div>만료: {expires.toLocaleString()} (만료 후 자동 비공개)</div>
-      </div>
 
-      <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 16, background: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <b>공유 링크</b>
-          <CopyLinkButton text={shareUrl} />
-        </div>
-        <div style={{ marginTop: 8, wordBreak: "break-all" }}>{shareUrl}</div>
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        <DeleteBoxClient id={data.id} />
-      </div>
     </div>
   );
 }
