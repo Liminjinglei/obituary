@@ -138,21 +138,8 @@ export default async function NoticePage({
   const data = id ? await getNotice(id) : null;
 
   if (!data) {
-    return (</div>
-
-      <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 16, background: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <b>공유 링크</b>
-          <CopyLinkButton text={shareUrl} />
-        </div>
-        <div style={{ marginTop: 8, wordBreak: "break-all" }}>{shareUrl}</div>
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        <DeleteBoxClient id={data.id} />
-      </div>
-
-<div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
+    return (
+      <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
         <h1 style={{ fontSize: 26 }}>부고장을 찾을 수 없습니다</h1>
         <p style={{ color: "#555", lineHeight: 1.6 }}>
           링크가 잘못되었거나, 이미 만료/삭제된 부고장입니다.
@@ -167,7 +154,6 @@ export default async function NoticePage({
 
   const all = data.bereaved_list ? [...data.bereaved_list] : [];
 
-  // 자부/사위 attachTo 묶기
   const attached = all.filter((x) => (x.role === "자부" || x.role === "사위") && x.attachTo);
   const attachedMap = new Map<string, BereavedItem[]>();
   for (const x of attached) {
@@ -186,24 +172,23 @@ export default async function NoticePage({
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
-  // ✅ 카드가 모바일에서 가로로 튀어나가지 않게 (중요)
   const cardStyle: any = {
     padding: 14,
     border: "1px solid #f0f0f0",
     borderRadius: 16,
     background: "#fff",
     minHeight: 92,
-    minWidth: 0, // ✅ 이게 있어야 nowrap가 있어도 카드가 화면 밖으로 안나감
+    minWidth: 0,
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
     gap: 10,
   };
 
-  // ✅ “간격/자간” 통일: 여기 값만 바꾸면 전체가 동일하게 움직임
-  const commonLS = "0em";         // 자간 통일(자연스럽게 0)
-  const personGap = 5;            // 한 사람 내부(이름-신분-·-번호) 간격
-  const groupGap = 6;             // 사람/구분자(|) 사이 간격
+  // 간격/자간: 과하지 않게 한 곳에서만 통일
+  const commonLS = "0em";
+  const personGap = 4; // 사람 내부 간격
+  const groupGap = 5;  // 사람/| 사이 간격
 
   const nameStyle: any = { fontWeight: 900, fontSize: 15, letterSpacing: commonLS };
   const metaStyle: any = { color: "#6b7280", fontSize: 13, letterSpacing: commonLS };
@@ -269,7 +254,6 @@ export default async function NoticePage({
 
                 return (
                   <div key={i} style={cardStyle}>
-                    {/* ✅ FitLine에는 “자식 1개(span)”만 넣어서 gap이 겹치지 않게 */}
                     <FitLine minScale={0.82}>
                       <span style={lineWrap}>
                         {PersonInline(c)}
@@ -329,10 +313,23 @@ export default async function NoticePage({
         </div>
       ) : null}
 
+      <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 16, background: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <b>공유 링크</b>
+          <CopyLinkButton text={shareUrl} />
+        </div>
+        <div style={{ marginTop: 8, wordBreak: "break-all" }}>{shareUrl}</div>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <DeleteBoxClient id={data.id} />
+      </div>
+
+      {/* ✅ 생성/만료는 항상 맨 아래 */}
       <div style={{ marginTop: 18, color: "#666", fontSize: 13, lineHeight: 1.6 }}>
         <div>생성: {created.toLocaleString()}</div>
         <div>만료: {expires.toLocaleString()} (만료 후 자동 비공개)</div>
-
+      </div>
     </div>
   );
 }
