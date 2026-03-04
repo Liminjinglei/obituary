@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Fragment } from "react";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { SITE_URL } from "@/lib/config";
@@ -116,8 +117,13 @@ export async function generateMetadata({
     ? `${notice.funeral_home}${notice.room ? ` · ${notice.room}` : ""}`
     : "부고장 정보를 찾을 수 없거나 만료되었습니다.";
 
-  const url = id ? `${SITE_URL}/m/${id}` : `${SITE_URL}/m`;
-  const image = `${SITE_URL}/og-default.png`;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") || h.get("host") || "";
+  const proto = h.get("x-forwarded-proto") || "https";
+  const base = host ? `${proto}://${host}` : SITE_URL;
+
+  const url = id ? `${base}/m/${id}` : `${base}/m`;
+  const image = `${base}/og-default.png`;
 
   return {
     title,
