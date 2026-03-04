@@ -158,7 +158,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
-  // ✅ 한 줄 강제(줄바꿈 금지) + 모바일에서 길면 가로 스크롤
+  // ✅ 한 줄 고정 (길면 가로 스크롤)
   const oneLineRowStyle: any = {
     display: "flex",
     gap: 8,
@@ -167,9 +167,21 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
     whiteSpace: "nowrap",
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
+    minWidth: 0,
   };
 
-  const pieceStyle: any = { flex: "0 0 auto" };
+  // ✅ 상주 카드(탭) 크기 통일: 최소 높이/패딩/레이아웃 고정
+  const cardStyle: any = {
+    padding: 14,
+    border: "1px solid #f0f0f0",
+    borderRadius: 16,
+    background: "#fff",
+    minHeight: 112,              // <- 이 값으로 “항상 같은 크기” 느낌
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    gap: 10,
+  };
 
   return (
     <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
@@ -181,7 +193,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
         </div>
       ) : null}
 
-      <div style={{ padding: 14, border: "1px solid #ddd", borderRadius: 12, marginTop: 16, background: "#fff" }}>
+      <div style={{ padding: 14, border: "1px solid #ddd", borderRadius: 16, marginTop: 16, background: "#fff" }}>
         <p style={{ margin: 0, fontSize: 16 }}>
           <b>장례식장</b> : {data.funeral_home}
         </p>
@@ -201,40 +213,44 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
       </div>
 
       {(children.length || others.length) ? (
-        <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
-          <b>상주</b>
+        <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 16 }}>
+          <b style={{ fontSize: 22 }}>상주</b>
 
           {children.length ? (
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+            <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               {children.map((c, i) => {
                 const key = c.gid || "";
                 const inlaws = key ? attachedMap.get(key) || [] : [];
-                return (
-                  <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
-                    {/* ✅ 여기서 줄바꿈 금지 */}
-                    <div style={oneLineRowStyle}>
-                      <span style={{ ...pieceStyle, fontWeight: 900 }}>{c.name}</span>
-                      <span style={{ ...pieceStyle, color: "#6b7280", fontSize: 13 }}>{c.role}</span>
-                      {c.phone ? <span style={{ ...pieceStyle, color: "#374151", fontSize: 13 }}>· {c.phone}</span> : null}
 
-                      {inlaws.length ? <span style={{ ...pieceStyle, color: "#d1d5db" }}>|</span> : null}
+                // 이 카드에 “계좌보기 버튼”을 보여줄 대상이 있는지
+                const hasAccounts =
+                  (c.accounts && c.accounts.length) || inlaws.some((x) => x.accounts && x.accounts.length);
+
+                return (
+                  <div key={i} style={cardStyle}>
+                    {/* 상단: 텍스트 한 줄(스크롤) */}
+                    <div style={oneLineRowStyle}>
+                      <span style={{ fontWeight: 900, fontSize: 26 }}>{c.name}</span>
+                      <span style={{ color: "#6b7280", fontSize: 18 }}>{c.role}</span>
+                      {c.phone ? <span style={{ color: "#374151", fontSize: 18 }}>· {c.phone}</span> : null}
+
+                      {inlaws.length ? <span style={{ color: "#d1d5db", fontSize: 18 }}>|</span> : null}
                       {inlaws.map((x, j) => (
-                        <span key={j} style={{ ...pieceStyle, display: "inline-flex", gap: 6, alignItems: "baseline" }}>
-                          <span style={{ fontWeight: 800 }}>{x.name}</span>
-                          <span style={{ color: "#6b7280", fontSize: 13 }}>{x.role}</span>
-                          {x.phone ? <span style={{ color: "#374151", fontSize: 13 }}>· {x.phone}</span> : null}
+                        <span key={j} style={{ display: "inline-flex", gap: 8, alignItems: "baseline" }}>
+                          <span style={{ fontWeight: 900, fontSize: 26 }}>{x.name}</span>
+                          <span style={{ color: "#6b7280", fontSize: 18 }}>{x.role}</span>
+                          {x.phone ? <span style={{ color: "#374151", fontSize: 18 }}>· {x.phone}</span> : null}
                         </span>
                       ))}
                     </div>
 
-                    {/* ✅ 계좌는 기본 접힘(작은 버튼만) */}
-                    {c.accounts && c.accounts.length ? <AccountsToggle accounts={c.accounts} title="계좌" /> : null}
-
-                    {inlaws.length ? (
-                      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                    {/* 하단: 계좌보기 버튼 영역 (없으면 빈 공간 없이 정렬) */}
+                    {hasAccounts ? (
+                      <div>
+                        {c.accounts && c.accounts.length ? <AccountsToggle accounts={c.accounts} title="계좌" /> : null}
                         {inlaws.map((x, j) =>
                           x.accounts && x.accounts.length ? (
-                            <div key={j} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
+                            <div key={j} style={{ marginTop: 8 }}>
                               <div style={{ fontWeight: 900, marginBottom: 6 }}>
                                 {x.name} ({x.role})
                               </div>
@@ -243,7 +259,9 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
                           ) : null
                         )}
                       </div>
-                    ) : null}
+                    ) : (
+                      <div />
+                    )}
                   </div>
                 );
               })}
@@ -251,16 +269,16 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
           ) : null}
 
           {others.length ? (
-            <div style={{ marginTop: children.length ? 14 : 10, display: "grid", gap: 10 }}>
+            <div style={{ marginTop: children.length ? 14 : 14, display: "grid", gap: 12 }}>
               {others.map((b, i) => (
-                <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
+                <div key={i} style={cardStyle}>
                   <div style={oneLineRowStyle}>
-                    <span style={{ ...pieceStyle, fontWeight: 900 }}>{b.name}</span>
-                    <span style={{ ...pieceStyle, color: "#6b7280", fontSize: 13 }}>{b.role}</span>
-                    {b.phone ? <span style={{ ...pieceStyle, color: "#374151", fontSize: 13 }}>· {b.phone}</span> : null}
+                    <span style={{ fontWeight: 900, fontSize: 26 }}>{b.name}</span>
+                    <span style={{ color: "#6b7280", fontSize: 18 }}>{b.role}</span>
+                    {b.phone ? <span style={{ color: "#374151", fontSize: 18 }}>· {b.phone}</span> : null}
                   </div>
 
-                  {b.accounts && b.accounts.length ? <AccountsToggle accounts={b.accounts} title="계좌" /> : null}
+                  {b.accounts && b.accounts.length ? <AccountsToggle accounts={b.accounts} title="계좌" /> : <div />}
                 </div>
               ))}
             </div>
@@ -269,7 +287,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
       ) : null}
 
       {data.message ? (
-        <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 12 }}>
+        <div style={{ marginTop: 14, padding: 14, background: "#fff", border: "1px solid #eee", borderRadius: 16 }}>
           <b>추가 안내</b>
           <div style={{ marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.7, color: "#111827" }}>
             {data.message}
@@ -282,7 +300,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
         <div>만료: {expires.toLocaleString()} (만료 후 자동 비공개)</div>
       </div>
 
-      <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 12, background: "#fff" }}>
+      <div style={{ marginTop: 22, padding: 14, border: "1px solid #eee", borderRadius: 16, background: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <b>공유 링크</b>
           <CopyLinkButton text={shareUrl} />
