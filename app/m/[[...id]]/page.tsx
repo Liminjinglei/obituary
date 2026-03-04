@@ -158,7 +158,7 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
 
-  // ✅ 한 줄 고정 (길면 가로 스크롤)
+  // ✅ 한 줄 강제 + 길면 가로 스크롤
   const oneLineRowStyle: any = {
     display: "flex",
     gap: 8,
@@ -170,18 +170,22 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
     minWidth: 0,
   };
 
-  // ✅ 상주 카드(탭) 크기 통일: 최소 높이/패딩/레이아웃 고정
+  // ✅ 카드 크기만 통일(글씨는 기본 크기 유지)
   const cardStyle: any = {
     padding: 14,
     border: "1px solid #f0f0f0",
     borderRadius: 16,
     background: "#fff",
-    minHeight: 112,              // <- 이 값으로 “항상 같은 크기” 느낌
+    minHeight: 92, // 너무 커 보이면 84~96 사이로 조절
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
     gap: 10,
   };
+
+  const nameStyle: any = { fontWeight: 900, fontSize: 18 };
+  const metaStyle: any = { color: "#6b7280", fontSize: 14 };
+  const phoneStyle: any = { color: "#374151", fontSize: 14 };
 
   return (
     <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
@@ -221,37 +225,33 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
               {children.map((c, i) => {
                 const key = c.gid || "";
                 const inlaws = key ? attachedMap.get(key) || [] : [];
-
-                // 이 카드에 “계좌보기 버튼”을 보여줄 대상이 있는지
                 const hasAccounts =
                   (c.accounts && c.accounts.length) || inlaws.some((x) => x.accounts && x.accounts.length);
 
                 return (
                   <div key={i} style={cardStyle}>
-                    {/* 상단: 텍스트 한 줄(스크롤) */}
                     <div style={oneLineRowStyle}>
-                      <span style={{ fontWeight: 900, fontSize: 26 }}>{c.name}</span>
-                      <span style={{ color: "#6b7280", fontSize: 18 }}>{c.role}</span>
-                      {c.phone ? <span style={{ color: "#374151", fontSize: 18 }}>· {c.phone}</span> : null}
+                      <span style={nameStyle}>{c.name}</span>
+                      <span style={metaStyle}>{c.role}</span>
+                      {c.phone ? <span style={phoneStyle}>· {c.phone}</span> : null}
 
-                      {inlaws.length ? <span style={{ color: "#d1d5db", fontSize: 18 }}>|</span> : null}
+                      {inlaws.length ? <span style={{ ...metaStyle, color: "#d1d5db" }}>|</span> : null}
                       {inlaws.map((x, j) => (
-                        <span key={j} style={{ display: "inline-flex", gap: 8, alignItems: "baseline" }}>
-                          <span style={{ fontWeight: 900, fontSize: 26 }}>{x.name}</span>
-                          <span style={{ color: "#6b7280", fontSize: 18 }}>{x.role}</span>
-                          {x.phone ? <span style={{ color: "#374151", fontSize: 18 }}>· {x.phone}</span> : null}
+                        <span key={j} style={{ display: "inline-flex", gap: 6, alignItems: "baseline" }}>
+                          <span style={nameStyle}>{x.name}</span>
+                          <span style={metaStyle}>{x.role}</span>
+                          {x.phone ? <span style={phoneStyle}>· {x.phone}</span> : null}
                         </span>
                       ))}
                     </div>
 
-                    {/* 하단: 계좌보기 버튼 영역 (없으면 빈 공간 없이 정렬) */}
                     {hasAccounts ? (
                       <div>
                         {c.accounts && c.accounts.length ? <AccountsToggle accounts={c.accounts} title="계좌" /> : null}
                         {inlaws.map((x, j) =>
                           x.accounts && x.accounts.length ? (
                             <div key={j} style={{ marginTop: 8 }}>
-                              <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 14 }}>
                                 {x.name} ({x.role})
                               </div>
                               <AccountsToggle accounts={x.accounts} title="계좌" />
@@ -269,13 +269,13 @@ export default async function NoticePage({ params }: { params: Promise<{ id?: st
           ) : null}
 
           {others.length ? (
-            <div style={{ marginTop: children.length ? 14 : 14, display: "grid", gap: 12 }}>
+            <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               {others.map((b, i) => (
                 <div key={i} style={cardStyle}>
                   <div style={oneLineRowStyle}>
-                    <span style={{ fontWeight: 900, fontSize: 26 }}>{b.name}</span>
-                    <span style={{ color: "#6b7280", fontSize: 18 }}>{b.role}</span>
-                    {b.phone ? <span style={{ color: "#374151", fontSize: 18 }}>· {b.phone}</span> : null}
+                    <span style={nameStyle}>{b.name}</span>
+                    <span style={metaStyle}>{b.role}</span>
+                    {b.phone ? <span style={phoneStyle}>· {b.phone}</span> : null}
                   </div>
 
                   {b.accounts && b.accounts.length ? <AccountsToggle accounts={b.accounts} title="계좌" /> : <div />}
