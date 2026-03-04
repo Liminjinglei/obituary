@@ -36,12 +36,10 @@ function roleRank(role: string): number {
     "부(父)": 0,
     "모(母)": 1,
     "배우자": 10,
-
     "아들": 20,
     "딸": 21,
     "자부": 22,
     "사위": 23,
-
     "손자": 30,
     "손녀": 31,
     "외손자": 32,
@@ -50,14 +48,12 @@ function roleRank(role: string): number {
     "손서": 35,
     "외손부": 36,
     "외손서": 37,
-
     "형(兄)": 40,
     "오빠": 41,
     "누나": 42,
     "언니": 43,
     "남동생": 44,
     "여동생": 45,
-
     "백부": 50,
     "백모": 51,
     "숙부": 52,
@@ -68,7 +64,6 @@ function roleRank(role: string): number {
     "제수": 57,
     "매형": 58,
     "매제": 59,
-
     "기타": 99,
   };
   return map[r] ?? 98;
@@ -90,9 +85,7 @@ function sortGeneral(list: BereavedItem[]) {
 async function getNotice(id: string): Promise<Notice | null> {
   const { data } = await supabaseServer
     .from("notices")
-    .select(
-      "id,deceased_name,deceased_age,funeral_home,room,summary,map_url,message,bereaved_list,expires_at,created_at"
-    )
+    .select("id,deceased_name,deceased_age,funeral_home,room,summary,map_url,message,bereaved_list,expires_at,created_at")
     .eq("id", id)
     .single();
 
@@ -105,11 +98,7 @@ async function getNotice(id: string): Promise<Notice | null> {
   return data as Notice;
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id?: string[] }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ id?: string[] }> }): Promise<Metadata> {
   const p = await params;
   const id = p.id?.[0] || "";
   const notice = id ? await getNotice(id) : null;
@@ -131,11 +120,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function NoticePage({
-  params,
-}: {
-  params: Promise<{ id?: string[] }>;
-}) {
+export default async function NoticePage({ params }: { params: Promise<{ id?: string[] }> }) {
   const p = await params;
   const id = p.id?.[0] || "";
   const data = id ? await getNotice(id) : null;
@@ -144,9 +129,7 @@ export default async function NoticePage({
     return (
       <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
         <h1 style={{ fontSize: 26 }}>부고장을 찾을 수 없습니다</h1>
-        <p style={{ color: "#555", lineHeight: 1.6 }}>
-          링크가 잘못되었거나, 이미 만료/삭제된 부고장입니다.
-        </p>
+        <p style={{ color: "#555", lineHeight: 1.6 }}>링크가 잘못되었거나, 이미 만료/삭제된 부고장입니다.</p>
       </div>
     );
   }
@@ -157,7 +140,6 @@ export default async function NoticePage({
 
   const all = data.bereaved_list ? [...data.bereaved_list] : [];
 
-  // 자부/사위 attachTo 묶기
   const attached = all.filter((x) => (x.role === "자부" || x.role === "사위") && x.attachTo);
   const attachedMap = new Map<string, BereavedItem[]>();
   for (const x of attached) {
@@ -175,6 +157,19 @@ export default async function NoticePage({
 
   const children = generalSorted.filter((x) => x.role === "아들" || x.role === "딸");
   const others = generalSorted.filter((x) => x.role !== "아들" && x.role !== "딸");
+
+  // ✅ 한 줄 강제(줄바꿈 금지) + 모바일에서 길면 가로 스크롤
+  const oneLineRowStyle: any = {
+    display: "flex",
+    gap: 8,
+    alignItems: "baseline",
+    flexWrap: "nowrap",
+    whiteSpace: "nowrap",
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+  };
+
+  const pieceStyle: any = { flex: "0 0 auto" };
 
   return (
     <div style={{ maxWidth: 760, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
@@ -216,14 +211,15 @@ export default async function NoticePage({
                 const inlaws = key ? attachedMap.get(key) || [] : [];
                 return (
                   <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
-                    <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 900 }}>{c.name}</span>
-                      <span style={{ color: "#6b7280", fontSize: 13 }}>{c.role}</span>
-                      {c.phone ? <span style={{ color: "#374151", fontSize: 13 }}>· {c.phone}</span> : null}
+                    {/* ✅ 여기서 줄바꿈 금지 */}
+                    <div style={oneLineRowStyle}>
+                      <span style={{ ...pieceStyle, fontWeight: 900 }}>{c.name}</span>
+                      <span style={{ ...pieceStyle, color: "#6b7280", fontSize: 13 }}>{c.role}</span>
+                      {c.phone ? <span style={{ ...pieceStyle, color: "#374151", fontSize: 13 }}>· {c.phone}</span> : null}
 
-                      {inlaws.length ? <span style={{ color: "#d1d5db" }}>|</span> : null}
+                      {inlaws.length ? <span style={{ ...pieceStyle, color: "#d1d5db" }}>|</span> : null}
                       {inlaws.map((x, j) => (
-                        <span key={j} style={{ display: "inline-flex", gap: 6, alignItems: "baseline" }}>
+                        <span key={j} style={{ ...pieceStyle, display: "inline-flex", gap: 6, alignItems: "baseline" }}>
                           <span style={{ fontWeight: 800 }}>{x.name}</span>
                           <span style={{ color: "#6b7280", fontSize: 13 }}>{x.role}</span>
                           {x.phone ? <span style={{ color: "#374151", fontSize: 13 }}>· {x.phone}</span> : null}
@@ -231,18 +227,17 @@ export default async function NoticePage({
                       ))}
                     </div>
 
-                    {/* ✅ 계좌는 기본 접힘 */}
-                    {c.accounts && c.accounts.length ? (
-                      <AccountsToggle accounts={c.accounts} title="계좌" />
-                    ) : null}
+                    {/* ✅ 계좌는 기본 접힘(작은 버튼만) */}
+                    {c.accounts && c.accounts.length ? <AccountsToggle accounts={c.accounts} title="계좌" /> : null}
 
-                    {/* 자부/사위 계좌도 동일하게 접힘 */}
                     {inlaws.length ? (
                       <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                         {inlaws.map((x, j) =>
                           x.accounts && x.accounts.length ? (
                             <div key={j} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-                              <div style={{ fontWeight: 900, marginBottom: 6 }}>{x.name} ({x.role})</div>
+                              <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                                {x.name} ({x.role})
+                              </div>
                               <AccountsToggle accounts={x.accounts} title="계좌" />
                             </div>
                           ) : null
@@ -259,16 +254,13 @@ export default async function NoticePage({
             <div style={{ marginTop: children.length ? 14 : 10, display: "grid", gap: 10 }}>
               {others.map((b, i) => (
                 <div key={i} style={{ padding: 12, border: "1px solid #f0f0f0", borderRadius: 12 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
-                    <div style={{ fontWeight: 900 }}>{b.name}</div>
-                    <div style={{ color: "#6b7280", fontSize: 13 }}>{b.role}</div>
-                    {b.phone ? <div style={{ color: "#374151", fontSize: 13 }}>· {b.phone}</div> : null}
+                  <div style={oneLineRowStyle}>
+                    <span style={{ ...pieceStyle, fontWeight: 900 }}>{b.name}</span>
+                    <span style={{ ...pieceStyle, color: "#6b7280", fontSize: 13 }}>{b.role}</span>
+                    {b.phone ? <span style={{ ...pieceStyle, color: "#374151", fontSize: 13 }}>· {b.phone}</span> : null}
                   </div>
 
-                  {/* ✅ 모든 상주 계좌는 기본 접힘 */}
-                  {b.accounts && b.accounts.length ? (
-                    <AccountsToggle accounts={b.accounts} title="계좌" />
-                  ) : null}
+                  {b.accounts && b.accounts.length ? <AccountsToggle accounts={b.accounts} title="계좌" /> : null}
                 </div>
               ))}
             </div>

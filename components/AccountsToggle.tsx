@@ -15,55 +15,74 @@ export default function AccountsToggle({
 
   if (!accounts || accounts.length === 0) return null;
 
+  // ✅ 닫힘 상태에서는 "작은 버튼 한 줄"만 보이게
+  if (!open) {
+    return (
+      <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 999,
+            border: "1px solid #e5e7eb",
+            background: "#fff",
+            color: "#111827",
+            fontWeight: 900,
+            cursor: "pointer",
+            fontSize: 13,
+          }}
+        >
+          {title} 보기
+        </button>
+      </div>
+    );
+  }
+
+  // ✅ 열린 상태에서만 박스/리스트가 크게 보이게
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #e5e7eb" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
         <div style={{ fontWeight: 900 }}>{title}</div>
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setOpen(false)}
           style={{
-            padding: "8px 10px",
-            borderRadius: 12,
+            padding: "6px 10px",
+            borderRadius: 999,
             border: "1px solid #e5e7eb",
-            background: open ? "#111827" : "#fff",
-            color: open ? "#fff" : "#111827",
+            background: "#111827",
+            color: "#fff",
             fontWeight: 900,
             cursor: "pointer",
-            whiteSpace: "nowrap",
+            fontSize: 13,
           }}
         >
-          {open ? "계좌닫기" : "계좌보기"}
+          닫기
         </button>
       </div>
 
-      {open ? (
-        <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-          {accounts.map((a, j) => (
-            <div
-              key={j}
-              style={{
-                background: "#fafafa",
-                border: "1px solid #eee",
-                borderRadius: 12,
-                padding: 10,
-              }}
-            >
-              <div style={{ fontWeight: 800 }}>{a.bank}</div>
-              <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
-              {a.holder ? (
-                <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>
-                  예금주: {a.holder}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ marginTop: 8, color: "#6b7280", fontSize: 13 }}>
-          (숨김 상태) 버튼을 눌러 계좌를 확인하세요.
-        </div>
-      )}
+      <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+        {accounts.map((a, j) => (
+          <div
+            key={j}
+            style={{
+              background: "#fafafa",
+              border: "1px solid #eee",
+              borderRadius: 12,
+              padding: 10,
+            }}
+          >
+            <div style={{ fontWeight: 800 }}>{a.bank}</div>
+            <div style={{ marginTop: 4, color: "#111827" }}>{a.number}</div>
+            {a.holder ? (
+              <div style={{ marginTop: 2, color: "#555", fontSize: 13 }}>
+                예금주: {a.holder}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
