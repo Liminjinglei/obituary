@@ -5,9 +5,9 @@ import { useMemo, useState } from "react";
 
 type AccountRow = { bank: string; number: string; holder: string };
 type BereavedRow = {
-  gid: string;          // 이 상주의 고유 키
-  attachTo?: string;    // 자부/사위가 연결될 아들/딸 gid
-  role: string;         // 버튼 신분
+  gid: string;
+  attachTo?: string;
+  role: string;
   name: string;
   phone: string;
   accounts: AccountRow[];
@@ -25,8 +25,6 @@ const ROLE_OPTIONS: string[] = [
 ];
 
 function makeId() {
-  // 브라우저에 crypto.randomUUID 있으면 사용
-  // (없으면 랜덤 문자열)
   // @ts-ignore
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     // @ts-ignore
@@ -42,28 +40,117 @@ function RolePicker({
   value: string;
   onChange: (v: string) => void;
 }) {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-      {ROLE_OPTIONS.map((r) => {
-        const active = value === r;
-        return (
-          <button
-            key={r}
-            type="button"
-            onClick={() => onChange(r)}
+  const [open, setOpen] = useState(!value);
+
+  const handleSelect = (v: string) => {
+    onChange(v);
+    setOpen(false);
+  };
+
+  if (!open && value) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          padding: 12,
+          border: "1px solid #e5e7eb",
+          borderRadius: 14,
+          background: "#fff",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <div
             style={{
-              padding: "14px 10px",
-              borderRadius: 14,
-              border: "1px solid #e5e7eb",
-              background: active ? "#111827" : "#fff",
-              color: active ? "#fff" : "#111827",
+              padding: "8px 12px",
+              borderRadius: 999,
+              background: "#111827",
+              color: "#fff",
               fontWeight: 800,
+              fontSize: 14,
+              whiteSpace: "nowrap",
             }}
           >
-            {r}
+            {value}
+          </div>
+          <div style={{ color: "#6b7280", fontSize: 13 }}>
+            선택된 신분
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={{
+            padding: "8px 12px",
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+            background: "#fff",
+            color: "#111827",
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          신분 변경
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 10,
+        }}
+      >
+        {ROLE_OPTIONS.map((r) => {
+          const active = value === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              onClick={() => handleSelect(r)}
+              style={{
+                padding: "14px 10px",
+                borderRadius: 14,
+                border: "1px solid #e5e7eb",
+                background: active ? "#111827" : "#fff",
+                color: active ? "#fff" : "#111827",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {r}
+            </button>
+          );
+        })}
+      </div>
+
+      {value ? (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 12,
+              border: "1px solid #e5e7eb",
+              background: "#fff",
+              color: "#111827",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            접기
           </button>
-        );
-      })}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -84,7 +171,6 @@ export default function CreatePage() {
 
   const [loading, setLoading] = useState(false);
 
-  // 연결 대상 후보: 아들/딸
   const attachTargets = useMemo(() => {
     return bereavedRows
       .filter((r) => r.role === "아들" || r.role === "딸")
@@ -94,11 +180,10 @@ export default function CreatePage() {
       }));
   }, [bereavedRows]);
 
-  // 전송용 변환
   const bereavedList = useMemo(() => {
     return bereavedRows
       .map((r, idx) => ({
-        seq: idx, // 같은 role끼리 입력순 유지
+        seq: idx,
         gid: r.gid,
         attachTo: r.attachTo || undefined,
         role: r.role,
@@ -163,8 +248,6 @@ export default function CreatePage() {
       return;
     }
 
-    // 자부/사위는 연결대상이 있으면 좋음(없어도 저장은 가능)
-    // 하지만 연결대상이 있는데 이름이 비어있으면 사용자 혼란 -> 경고
     for (const r of bereavedRows) {
       if ((r.role === "자부" || r.role === "사위") && r.attachTo) {
         const t = bereavedRows.find((x) => x.gid === r.attachTo);
@@ -254,8 +337,18 @@ export default function CreatePage() {
         <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <div style={{ fontWeight: 900 }}>상주 정보</div>
-            <button type="button" onClick={addBereaved}
-              style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#111827", color: "#fff", fontWeight: 800 }}>
+            <button
+              type="button"
+              onClick={addBereaved}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid #e5e7eb",
+                background: "#111827",
+                color: "#fff",
+                fontWeight: 800,
+              }}
+            >
               + 상주 추가
             </button>
           </div>
@@ -267,14 +360,12 @@ export default function CreatePage() {
                 <RolePicker
                   value={r.role}
                   onChange={(v) => {
-                    // 역할이 바뀌면 attachTo 초기화(자부/사위 아닐 때)
                     const next: Partial<BereavedRow> = { role: v };
                     if (v !== "자부" && v !== "사위") next.attachTo = undefined;
                     updateBereaved(idx, next);
                   }}
                 />
 
-                {/* 자부/사위일 때 연결 대상 선택 */}
                 {(r.role === "자부" || r.role === "사위") ? (
                   <div style={{ marginTop: 12 }}>
                     <label>연결 대상(아들/딸) (선택)</label>
@@ -297,21 +388,37 @@ export default function CreatePage() {
                 <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                   <div>
                     <label>이름</label>
-                    <input value={r.name} onChange={(e) => updateBereaved(idx, { name: e.target.value })}
-                      style={{ width: "100%", padding: 10, marginTop: 6 }} />
+                    <input
+                      value={r.name}
+                      onChange={(e) => updateBereaved(idx, { name: e.target.value })}
+                      style={{ width: "100%", padding: 10, marginTop: 6 }}
+                    />
                   </div>
 
                   <div>
                     <label>연락처(선택)</label>
-                    <input value={r.phone} onChange={(e) => updateBereaved(idx, { phone: e.target.value })}
-                      style={{ width: "100%", padding: 10, marginTop: 6 }} placeholder="예) 010-1234-5678" />
+                    <input
+                      value={r.phone}
+                      onChange={(e) => updateBereaved(idx, { phone: e.target.value })}
+                      style={{ width: "100%", padding: 10, marginTop: 6 }}
+                      placeholder="예) 010-1234-5678"
+                    />
                   </div>
 
                   <div style={{ marginTop: 6, paddingTop: 10, borderTop: "1px dashed #ddd" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ fontWeight: 900 }}>계좌 정보(선택)</div>
-                      <button type="button" onClick={() => addAccount(idx)}
-                        style={{ padding: "8px 10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 800 }}>
+                      <button
+                        type="button"
+                        onClick={() => addAccount(idx)}
+                        style={{
+                          padding: "8px 10px",
+                          borderRadius: 12,
+                          border: "1px solid #e5e7eb",
+                          background: "#fff",
+                          fontWeight: 800,
+                        }}
+                      >
                         + 계좌 추가
                       </button>
                     </div>
@@ -327,24 +434,45 @@ export default function CreatePage() {
                             <div style={{ display: "grid", gap: 10 }}>
                               <div>
                                 <label>은행 *</label>
-                                <input value={a.bank} onChange={(e) => updateAccount(idx, aIdx, "bank", e.target.value)}
-                                  style={{ width: "100%", padding: 10, marginTop: 6 }} placeholder="예) 국민은행" />
+                                <input
+                                  value={a.bank}
+                                  onChange={(e) => updateAccount(idx, aIdx, "bank", e.target.value)}
+                                  style={{ width: "100%", padding: 10, marginTop: 6 }}
+                                  placeholder="예) 국민은행"
+                                />
                               </div>
                               <div>
                                 <label>계좌번호 *</label>
-                                <input value={a.number} onChange={(e) => updateAccount(idx, aIdx, "number", e.target.value)}
-                                  style={{ width: "100%", padding: 10, marginTop: 6 }} placeholder="예) 123-45-678901" />
+                                <input
+                                  value={a.number}
+                                  onChange={(e) => updateAccount(idx, aIdx, "number", e.target.value)}
+                                  style={{ width: "100%", padding: 10, marginTop: 6 }}
+                                  placeholder="예) 123-45-678901"
+                                />
                               </div>
                               <div>
                                 <label>예금주(선택)</label>
-                                <input value={a.holder} onChange={(e) => updateAccount(idx, aIdx, "holder", e.target.value)}
-                                  style={{ width: "100%", padding: 10, marginTop: 6 }} placeholder="예) 홍길동" />
+                                <input
+                                  value={a.holder}
+                                  onChange={(e) => updateAccount(idx, aIdx, "holder", e.target.value)}
+                                  style={{ width: "100%", padding: 10, marginTop: 6 }}
+                                  placeholder="예) 홍길동"
+                                />
                               </div>
                             </div>
 
                             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-                              <button type="button" onClick={() => removeAccount(idx, aIdx)}
-                                style={{ padding: "8px 10px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#fff", fontWeight: 800 }}>
+                              <button
+                                type="button"
+                                onClick={() => removeAccount(idx, aIdx)}
+                                style={{
+                                  padding: "8px 10px",
+                                  borderRadius: 12,
+                                  border: "1px solid #e5e7eb",
+                                  background: "#fff",
+                                  fontWeight: 800,
+                                }}
+                              >
                                 계좌 삭제
                               </button>
                             </div>
